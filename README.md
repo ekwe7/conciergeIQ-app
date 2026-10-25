@@ -90,6 +90,7 @@ Sign-in, live order queue, order details, rooms/stays, menu management, inventor
 - [`docs/order-lifecycle.md`](docs/order-lifecycle.md) — order state machine, transitions, and cancellation rules.
 - [`docs/design-system.md`](docs/design-system.md) — visual tokens, typography, and accessibility standards.
 - [`docs/ui-ux/README.md`](docs/ui-ux/README.md) — screen renders, mockups, and UI prototypes.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — development workflow, code standards, and PR checklist.
 
 ## MVP recommendation
 
