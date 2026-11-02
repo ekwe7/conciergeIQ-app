@@ -114,10 +114,17 @@ importers:
         version: 2.1.9
 
   packages/contracts:
+    dependencies:
+      '@sinclair/typebox':
+        specifier: ^0.34.52
+        version: 0.34.52
     devDependencies:
       typescript:
         specifier: ^5.6.2
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.2
+        version: 2.1.9
 
   packages/ui:
     devDependencies:
@@ -536,6 +543,9 @@ packages:
     resolution: {integrity: sha512-DeuVFilvaGtoS9TFIbTIQ0Kt4CBqP3xnjJ8SFqWWbXlFbrpmCdivEW7Rm38trRA8rZzQQ8lhs73nEetWotJpTg==}
     cpu: [x64]
     os: [win32]
+
+  '@sinclair/typebox@0.34.52':
+    resolution: {integrity: sha512-XiMQh7qqVlxZzcVD+kkGMNGMzcTrDMLWI7S4x7z1MkCkbDPrekpZXEUK0eZqZFMuHQg2a2DZOcDIh9o5v3Gonw==}
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -1432,6 +1442,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.67.2':
     optional: true
+
+  '@sinclair/typebox@0.34.52': {}
 
   '@types/babel__core@7.20.5':
     dependencies:
