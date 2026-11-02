@@ -90,7 +90,7 @@ jobs:
         run: pnpm install --prefer-frozen-lockfile
 
       - name: Run tests
-        run: pnpm -r --if-present test --run
+        run: pnpm -r --if-present test
 
   build:
     name: Production Build
