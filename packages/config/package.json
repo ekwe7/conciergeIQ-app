@@ -1,0 +1,9 @@
+{
+  "name": "@conciergeiq/config",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./typescript": "./typescript/base.json",
+    "./tokens.css": "./tokens.css"
+  }
+}
