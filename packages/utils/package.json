@@ -16,9 +16,5 @@
     "msw": "^2.4.9",
     "typescript": "^5.6.2",
     "vitest": "^2.1.2"
-    "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.2"
   }
 }

@@ -48,7 +48,4 @@ export default {
   },
   plugins: [],
 };
-    extend: {},
-  },
-  plugins: [],
-}
+
