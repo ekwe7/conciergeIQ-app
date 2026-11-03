@@ -1,6 +1,5 @@
 {
   "name": "@conciergeiq/guest-web",
-  "name": "guest-web",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -15,10 +14,6 @@
   "dependencies": {
     "@conciergeiq/contracts": "workspace:*",
     "@conciergeiq/config": "workspace:*",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@conciergeiq/contracts": "workspace:*",
     "@conciergeiq/ui": "workspace:*",
     "@conciergeiq/utils": "workspace:*",
     "lucide-react": "^0.453.0",
