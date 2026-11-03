@@ -109,16 +109,6 @@ describe('Guest Web Application Suite', () => {
     expect(screen.getByText('Session or Connection Issue')).toBeDefined();
     expect(screen.getByText(/How to Reconnect/i)).toBeDefined();
     expect(screen.getByText(/Point your smartphone camera/i)).toBeDefined();
-import { render, screen } from '@testing-library/react';
-import { formatMoney } from '@conciergeiq/utils';
-import { App } from '../src/App';
-
-describe('Guest Web Application Suite', () => {
-  it('mounts the root guest application component cleanly in jsdom', () => {
-    const { container } = render(<App />);
-    expect(container).toBeDefined();
-    expect(screen.getByText(/The Lagos Grand Hotel & Suites/i)).toBeDefined();
-    expect(screen.getByText(/Room 402/i)).toBeDefined();
   });
 
   it('formats room service item pricing accurately', () => {
@@ -134,7 +124,6 @@ describe('Guest Web Application Suite', () => {
     const subtotal = sampleItems.reduce(
       (accumulator, currentItem) =>
         accumulator + currentItem.priceMinor * currentItem.quantity,
-      (accumulator, currentItem) => accumulator + currentItem.priceMinor * currentItem.quantity,
       0
     );
     expect(subtotal).toBe(4150);
