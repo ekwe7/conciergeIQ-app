@@ -1,18 +1,49 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card, Badge } from '@conciergeiq/ui';
 import { Utensils, Bell, Sparkles, MapPin, Clock } from 'lucide-react';
 import { GuestSession } from '@conciergeiq/contracts';
 
-interface WelcomePageProps {
-  session: GuestSession;
-  onNavigate: (page: string) => void;
+export interface WelcomePageProperties {
+  session?: GuestSession;
+  onNavigate?: (destination: string) => void;
 }
 
-export const WelcomePage: React.FC<WelcomePageProps> = ({ session, onNavigate }) => {
+const DEFAULT_GUEST_SESSION: GuestSession = {
+  token: 'qr_demo_token_8829',
+  roomNumber: '402',
+  stayId: 'stay_demo_9921',
+  hotelId: 'htl_lagos_grand',
+  hotelName: 'The Lagos Grand Hotel & Suites',
+  guestName: 'Adeola Johnson',
+  expiresAt: new Date(Date.now() + 86400000).toISOString(),
+};
+
+export const WelcomePage: React.FC<WelcomePageProperties> = ({
+  session = DEFAULT_GUEST_SESSION,
+  onNavigate,
+}) => {
+  const navigate = useNavigate();
+
+  const handleNavigation = (targetDestination: string) => {
+    if (onNavigate) {
+      onNavigate(targetDestination);
+      return;
+    }
+
+    if (targetDestination === 'menu') {
+      navigate('/menu');
+    } else if (targetDestination === 'tracking') {
+      navigate('/orders');
+    } else {
+      navigate(`/${targetDestination}`);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between pb-12">
+    <div className="min-h-full flex flex-col justify-between pb-8">
       {/* Hero Banner */}
-      <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 pt-12 rounded-b-3xl shadow-lg">
+      <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-b-3xl shadow-elevation-mid">
         <div className="flex items-center justify-between mb-4">
           <Badge variant="success" className="text-emerald-300 bg-emerald-950/60 border-emerald-500/30">
             Active Stay
@@ -36,7 +67,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ session, onNavigate })
             <p className="text-xs uppercase tracking-wider text-slate-300 font-semibold">Folio Room Service</p>
             <p className="text-sm font-medium text-white">Direct-to-room delivery</p>
           </div>
-          <Button variant="primary" size="sm" onClick={() => onNavigate('menu')}>
+          <Button variant="primary" size="sm" onClick={() => handleNavigation('menu')}>
             Order Now
           </Button>
         </div>
@@ -51,7 +82,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ session, onNavigate })
         <div className="grid grid-cols-1 gap-3">
           <Card
             className="p-4 flex items-center space-x-4 hover:border-emerald-500 transition-all cursor-pointer"
-            onClick={() => onNavigate('menu')}
+            onClick={() => handleNavigation('menu')}
           >
             <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
               <Utensils className="w-6 h-6" />
@@ -64,7 +95,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ session, onNavigate })
 
           <Card
             className="p-4 flex items-center space-x-4 hover:border-emerald-500 transition-all cursor-pointer"
-            onClick={() => onNavigate('tracking')}
+            onClick={() => handleNavigation('tracking')}
           >
             <div className="p-3 bg-sky-50 rounded-xl text-sky-600">
               <Bell className="w-6 h-6" />
@@ -93,7 +124,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ session, onNavigate })
       </div>
 
       {/* Footer Branding */}
-      <div className="text-center text-xs text-slate-400">
+      <div className="text-center text-xs text-slate-400 py-3">
         Powered by ConciergeIQ &bull; Seamless Hospitality Experience
       </div>
     </div>
