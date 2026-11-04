@@ -21,6 +21,11 @@ import {
   GuestSessionState,
 } from '../features/guest-session';
 import { AppApiError } from '../lib/error-handler';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button, Card, Badge } from '@conciergeiq/ui';
+import { Utensils, Bell, Sparkles, MapPin, Clock } from 'lucide-react';
+import { GuestSession } from '@conciergeiq/contracts';
 
 export interface WelcomePageProperties {
   session?: GuestSession;
@@ -28,6 +33,7 @@ export interface WelcomePageProperties {
 }
 
 const DEFAULT_FALLBACK_SESSION: GuestSession = {
+const DEFAULT_GUEST_SESSION: GuestSession = {
   token: 'qr_demo_token_8829',
   roomNumber: '402',
   stayId: 'stay_demo_9921',
@@ -111,6 +117,11 @@ export const WelcomePage: React.FC<WelcomePageProperties> = ({
       });
     }
   }, [qrTokenFromUrl, resolveQrToken]);
+export const WelcomePage: React.FC<WelcomePageProperties> = ({
+  session = DEFAULT_GUEST_SESSION,
+  onNavigate,
+}) => {
+  const navigate = useNavigate();
 
   const handleNavigation = (targetDestination: string) => {
     if (onNavigate) {
@@ -124,6 +135,8 @@ export const WelcomePage: React.FC<WelcomePageProperties> = ({
       navigate('/orders');
     } else if (targetDestination === 'bill') {
       navigate('/bill');
+    } else if (targetDestination === 'tracking') {
+      navigate('/orders');
     } else {
       navigate(`/${targetDestination}`);
     }
@@ -142,6 +155,18 @@ export const WelcomePage: React.FC<WelcomePageProperties> = ({
           <p className="text-xs text-text-muted">
             Verifying your active stay session credentials.
           </p>
+  return (
+    <div className="min-h-full flex flex-col justify-between pb-8">
+      {/* Hero Banner */}
+      <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-b-3xl shadow-elevation-mid">
+        <div className="flex items-center justify-between mb-4">
+          <Badge variant="success" className="text-emerald-300 bg-emerald-950/60 border-emerald-500/30">
+            Active Stay
+          </Badge>
+          <div className="flex items-center space-x-1 text-slate-300 text-xs">
+            <Clock className="w-3.5 h-3.5" />
+            <span>24/7 Service</span>
+          </div>
         </div>
       </div>
     );
@@ -193,6 +218,8 @@ export const WelcomePage: React.FC<WelcomePageProperties> = ({
           >
             <RefreshCw className="w-4 h-4" />
             <span>Retry Connection</span>
+          <Button variant="primary" size="sm" onClick={() => handleNavigation('menu')}>
+            Order Now
           </Button>
 
           <div className="pt-2 text-xs text-text-muted flex items-center justify-center gap-1.5">
@@ -220,6 +247,8 @@ export const WelcomePage: React.FC<WelcomePageProperties> = ({
           <Card
             className="p-3.5 flex items-center justify-between gap-3 bg-brand-50 border-brand/30 hover:border-brand cursor-pointer shadow-elevation-low transition-all"
             onClick={() => handleNavigation('orders')}
+            className="p-4 flex items-center space-x-4 hover:border-emerald-500 transition-all cursor-pointer"
+            onClick={() => handleNavigation('menu')}
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center shrink-0 shadow-elevation-low">
@@ -246,6 +275,18 @@ export const WelcomePage: React.FC<WelcomePageProperties> = ({
           <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3 px-1">
             Guest Services
           </h2>
+          <Card
+            className="p-4 flex items-center space-x-4 hover:border-emerald-500 transition-all cursor-pointer"
+            onClick={() => handleNavigation('tracking')}
+          >
+            <div className="p-3 bg-sky-50 rounded-xl text-sky-600">
+              <Bell className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-slate-900 text-base">Live Order Status</h3>
+              <p className="text-xs text-slate-500">Track kitchen preparation & delivery</p>
+            </div>
+          </Card>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Primary Action Card: Room Service */}
@@ -320,6 +361,7 @@ export const WelcomePage: React.FC<WelcomePageProperties> = ({
 
       {/* Footer Branding */}
       <div className="text-center text-[11px] text-text-muted py-2">
+      <div className="text-center text-xs text-slate-400 py-3">
         Powered by ConciergeIQ &bull; Seamless Hospitality Experience
       </div>
     </div>
