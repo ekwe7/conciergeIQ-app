@@ -1,87 +1,36 @@
-import React, { useState } from 'react';
-import { WelcomePage } from './pages/WelcomePage';
-import { MenuPage } from './pages/MenuPage';
-import { CartPage } from './pages/CartPage';
-import { OrderTrackingPage } from './pages/OrderTrackingPage';
-import { GuestSession, MenuItem, CartItem, Order } from '@conciergeiq/contracts';
+import React from 'react';
+import { RouterProvider } from 'react-router-dom';
+import { ApplicationProviders } from './app/providers';
+import { createApplicationRouter, applicationRouter } from './app/router';
 
-const DEFAULT_SESSION: GuestSession = {
-  token: 'qr_demo_token_8829',
-  roomNumber: '402',
-  stayId: 'stay_demo_9921',
-  hotelId: 'htl_lagos_grand',
-  hotelName: 'The Lagos Grand Hotel & Suites',
-  guestName: 'Adeola Johnson',
-  expiresAt: new Date(Date.now() + 86400000).toISOString(),
-};
+export interface ApplicationProperties {
+  initialEntries?: string[];
+  router?: ReturnType<typeof createApplicationRouter>;
+}
 
-export const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'welcome' | 'menu' | 'cart' | 'tracking'>('welcome');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-
-  const handleAddToCart = (item: MenuItem) => {
-    setCart(prev => {
-      const existing = prev.find(ci => ci.item.id === item.id);
-      if (existing) {
-        return prev.map(ci =>
-          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
-        );
-      }
-      return [...prev, { item, quantity: 1 }];
-    });
-  };
-
-  const handleRemoveFromCart = (itemId: string) => {
-    setCart(prev => {
-      const existing = prev.find(ci => ci.item.id === itemId);
-      if (!existing) return prev;
-      if (existing.quantity <= 1) {
-        return prev.filter(ci => ci.item.id !== itemId);
-      }
-      return prev.map(ci =>
-        ci.item.id === itemId ? { ...ci, quantity: ci.quantity - 1 } : ci
-      );
-    });
-  };
-
-  const handleClearCart = () => setCart([]);
-
-  const handleOrderSuccess = (order: Order) => {
-    setActiveOrder(order);
-    setCurrentPage('tracking');
-  };
+/**
+ * Root Guest Web Application component.
+ * Configures the mobile-first application shell, safe-area viewport insets,
+ * query client providers, and declarative React Router DOM routes.
+ */
+export const App: React.FC<ApplicationProperties> = ({
+  initialEntries,
+  router: customRouter,
+}) => {
+  const routerInstance = React.useMemo(() => {
+    if (customRouter) {
+      return customRouter;
+    }
+    if (initialEntries && initialEntries.length > 0) {
+      return createApplicationRouter({ initialEntries });
+    }
+    return applicationRouter;
+  }, [customRouter, initialEntries]);
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl relative font-sans">
-      {currentPage === 'welcome' && (
-        <WelcomePage session={DEFAULT_SESSION} onNavigate={(p) => setCurrentPage(p as any)} />
-      )}
-      {currentPage === 'menu' && (
-        <MenuPage
-          onBack={() => setCurrentPage('welcome')}
-          onViewCart={() => setCurrentPage('cart')}
-          cart={cart}
-          onAddToCart={handleAddToCart}
-          onRemoveFromCart={handleRemoveFromCart}
-        />
-      )}
-      {currentPage === 'cart' && (
-        <CartPage
-          onBack={() => setCurrentPage('menu')}
-          cart={cart}
-          session={DEFAULT_SESSION}
-          onClearCart={handleClearCart}
-          onOrderSuccess={handleOrderSuccess}
-        />
-      )}
-      {currentPage === 'tracking' && (
-        <OrderTrackingPage
-          order={activeOrder}
-          onBackToMenu={() => setCurrentPage('menu')}
-        />
-      )}
-    </div>
+    <ApplicationProviders>
+      <RouterProvider router={routerInstance} />
+    </ApplicationProviders>
   );
 };
 

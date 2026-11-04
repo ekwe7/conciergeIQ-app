@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card, Badge } from '@conciergeiq/ui';
 import { formatMoney } from '@conciergeiq/utils';
 import { MenuItem, CartItem } from '@conciergeiq/contracts';
 import { ArrowLeft, ShoppingBag, Plus, Minus, Check } from 'lucide-react';
 
-interface MenuPageProps {
-  onBack: () => void;
-  onViewCart: () => void;
-  cart: CartItem[];
-  onAddToCart: (item: MenuItem) => void;
-  onRemoveFromCart: (itemId: string) => void;
+export interface MenuPageProperties {
+  onBack?: () => void;
+  onViewCart?: () => void;
+  cart?: CartItem[];
+  onAddToCart?: (menuItem: MenuItem) => void;
+  onRemoveFromCart?: (menuItemId: string) => void;
 }
 
-const SAMPLE_MENU: MenuItem[] = [
+const SAMPLE_MENU_ITEMS: MenuItem[] = [
   {
     id: 'item_1',
     name: 'Artisan Avocado & Poached Egg Toast',
@@ -58,98 +59,179 @@ const SAMPLE_MENU: MenuItem[] = [
   },
 ];
 
-export const MenuPage: React.FC<MenuPageProps> = ({
+export const MenuPage: React.FC<MenuPageProperties> = ({
   onBack,
   onViewCart,
-  cart,
-  onAddToCart,
-  onRemoveFromCart,
+  cart: externalCart,
+  onAddToCart: externalAddToCart,
+  onRemoveFromCart: externalRemoveFromCart,
 }) => {
+  const navigate = useNavigate();
+  const [internalCart, setInternalCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
-  const categories = ['All', 'Breakfast', 'Mains', 'Beverages', 'Desserts'];
+  const categoryList: string[] = ['All', 'Breakfast', 'Mains', 'Beverages', 'Desserts'];
 
-  const filteredItems = activeCategory === 'All'
-    ? SAMPLE_MENU
-    : SAMPLE_MENU.filter(item => item.category === activeCategory);
+  const activeCart = externalCart ?? internalCart;
 
-  const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCartMinor = cart.reduce((sum, item) => sum + item.item.priceMinor * item.quantity, 0);
+  const handleAddToCart = (itemToAdd: MenuItem) => {
+    if (externalAddToCart) {
+      externalAddToCart(itemToAdd);
+      return;
+    }
 
-  const getItemQuantity = (itemId: string): number => {
-    const found = cart.find(ci => ci.item.id === itemId);
-    return found ? found.quantity : 0;
+    setInternalCart((previousCart) => {
+      const existingItem = previousCart.find(
+        (cartEntry) => cartEntry.item.id === itemToAdd.id
+      );
+      if (existingItem) {
+        return previousCart.map((cartEntry) =>
+          cartEntry.item.id === itemToAdd.id
+            ? { ...cartEntry, quantity: cartEntry.quantity + 1 }
+            : cartEntry
+        );
+      }
+      return [...previousCart, { item: itemToAdd, quantity: 1 }];
+    });
+  };
+
+  const handleRemoveFromCart = (targetItemId: string) => {
+    if (externalRemoveFromCart) {
+      externalRemoveFromCart(targetItemId);
+      return;
+    }
+
+    setInternalCart((previousCart) => {
+      const existingItem = previousCart.find(
+        (cartEntry) => cartEntry.item.id === targetItemId
+      );
+      if (!existingItem) {
+        return previousCart;
+      }
+      if (existingItem.quantity <= 1) {
+        return previousCart.filter(
+          (cartEntry) => cartEntry.item.id !== targetItemId
+        );
+      }
+      return previousCart.map((cartEntry) =>
+        cartEntry.item.id === targetItemId
+          ? { ...cartEntry, quantity: cartEntry.quantity - 1 }
+          : cartEntry
+      );
+    });
+  };
+
+  const handleBackNavigation = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleViewCartNavigation = () => {
+    if (onViewCart) {
+      onViewCart();
+    } else {
+      navigate('/cart');
+    }
+  };
+
+  const filteredMenuItems = activeCategory === 'All'
+    ? SAMPLE_MENU_ITEMS
+    : SAMPLE_MENU_ITEMS.filter((menuItem) => menuItem.category === activeCategory);
+
+  const totalCartCount = activeCart.reduce(
+    (runningCount, cartEntry) => runningCount + cartEntry.quantity,
+    0
+  );
+  const totalCartMinor = activeCart.reduce(
+    (runningTotal, cartEntry) =>
+      runningTotal + cartEntry.item.priceMinor * cartEntry.quantity,
+    0
+  );
+
+  const getItemQuantity = (targetItemId: string): number => {
+    const matchedItem = activeCart.find(
+      (cartEntry) => cartEntry.item.id === targetItemId
+    );
+    return matchedItem ? matchedItem.quantity : 0;
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28">
+    <div className="min-h-full flex flex-col justify-between pb-28">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-20 bg-surface/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between">
         <button
-          onClick={onBack}
-          className="p-2 -ml-2 text-slate-700 hover:bg-slate-100 rounded-full"
+          type="button"
+          aria-label="Back"
+          onClick={handleBackNavigation}
+          className="p-2 -ml-2 text-text hover:bg-surface-muted rounded-full transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-base font-bold text-slate-900">In-Room Dining</h1>
+        <h1 className="text-base font-bold text-text">In-Room Dining</h1>
         <button
-          onClick={onViewCart}
-          className="relative p-2 -mr-2 text-slate-700 hover:bg-slate-100 rounded-full"
+          type="button"
+          aria-label="View Cart"
+          onClick={handleViewCartNavigation}
+          className="relative p-2 -mr-2 text-text hover:bg-surface-muted rounded-full transition-colors"
         >
           <ShoppingBag className="w-5 h-5" />
           {totalCartCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
+            <span className="absolute top-1 right-1 w-4 h-4 bg-brand text-white rounded-full text-[10px] font-bold flex items-center justify-center">
               {totalCartCount}
             </span>
           )}
         </button>
       </div>
 
-      {/* Category Pills */}
-      <div className="bg-white px-4 py-2 flex space-x-2 overflow-x-auto border-b border-slate-100 no-scrollbar">
-        {categories.map(cat => (
+      {/* Category Filter Pills */}
+      <div className="bg-surface px-4 py-2 flex space-x-2 overflow-x-auto border-b border-border no-scrollbar">
+        {categoryList.map((categoryName) => (
           <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
+            key={categoryName}
+            type="button"
+            onClick={() => setActiveCategory(categoryName)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-              activeCategory === cat
-                ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              activeCategory === categoryName
+                ? 'bg-brand text-white'
+                : 'bg-surface-muted text-text-muted hover:bg-border/50'
             }`}
           >
-            {cat}
+            {categoryName}
           </button>
         ))}
       </div>
 
       {/* Menu Item List */}
-      <div className="p-4 space-y-3 max-w-lg mx-auto">
-        {filteredItems.map(item => {
-          const qty = getItemQuantity(item.id);
+      <div className="p-4 space-y-3 max-w-lg mx-auto w-full flex-1">
+        {filteredMenuItems.map((menuItem) => {
+          const itemQuantity = getItemQuantity(menuItem.id);
           return (
-            <Card key={item.id} className="p-4 flex flex-col justify-between space-y-3">
+            <Card key={menuItem.id} className="p-4 flex flex-col justify-between space-y-3 shadow-elevation-low">
               <div>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="font-semibold text-slate-900 text-sm">{item.name}</h3>
-                    {item.dietary?.map(d => (
-                      <Badge key={d} variant="info" className="mr-1 mt-1">
-                        {d}
+                    <h3 className="font-semibold text-text text-sm">{menuItem.name}</h3>
+                    {menuItem.dietary?.map((dietaryLabel) => (
+                      <Badge key={dietaryLabel} variant="info" className="mr-1 mt-1">
+                        {dietaryLabel}
                       </Badge>
                     ))}
                   </div>
-                  <span className="font-bold text-slate-900 text-sm">
-                    {formatMoney(item.priceMinor)}
+                  <span className="font-bold text-text text-sm shrink-0">
+                    {formatMoney(menuItem.priceMinor, 'USD')}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                  {item.description}
+                <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
+                  {menuItem.description}
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <span className="text-xs font-medium text-slate-400">
-                  {item.available ? (
-                    <span className="text-emerald-600 font-medium flex items-center">
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-xs font-medium text-text-muted">
+                  {menuItem.available ? (
+                    <span className="text-brand font-medium flex items-center">
                       <Check className="w-3.5 h-3.5 mr-1" /> Ready in 20-30 min
                     </span>
                   ) : (
@@ -157,28 +239,32 @@ export const MenuPage: React.FC<MenuPageProps> = ({
                   )}
                 </span>
 
-                {item.available && (
-                  qty === 0 ? (
+                {menuItem.available && (
+                  itemQuantity === 0 ? (
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => onAddToCart(item)}
+                      onClick={() => handleAddToCart(menuItem)}
                       className="px-3 py-1"
                     >
                       <Plus className="w-3.5 h-3.5 mr-1" /> Add
                     </Button>
                   ) : (
-                    <div className="flex items-center space-x-2 bg-slate-100 rounded-lg p-1">
+                    <div className="flex items-center space-x-2 bg-surface-muted border border-border rounded-lg p-1">
                       <button
-                        onClick={() => onRemoveFromCart(item.id)}
-                        className="p-1 hover:bg-white rounded text-slate-700"
+                        type="button"
+                        aria-label="Decrease quantity"
+                        onClick={() => handleRemoveFromCart(menuItem.id)}
+                        className="p-1 hover:bg-surface rounded text-text transition-colors"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="text-xs font-bold text-slate-900 px-1">{qty}</span>
+                      <span className="text-xs font-bold text-text px-1">{itemQuantity}</span>
                       <button
-                        onClick={() => onAddToCart(item)}
-                        className="p-1 hover:bg-white rounded text-slate-700"
+                        type="button"
+                        aria-label="Increase quantity"
+                        onClick={() => handleAddToCart(menuItem)}
+                        className="p-1 hover:bg-surface rounded text-text transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -193,13 +279,17 @@ export const MenuPage: React.FC<MenuPageProps> = ({
 
       {/* Floating Bottom Cart Bar */}
       {totalCartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl max-w-lg mx-auto z-30">
-          <div className="flex items-center justify-between">
+        <div className="fixed bottom-16 left-0 right-0 p-4 bg-surface/95 backdrop-blur-md border-t border-border shadow-elevation-high max-w-md mx-auto z-20">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-slate-500">{totalCartCount} item{totalCartCount > 1 ? 's' : ''} in cart</p>
-              <p className="text-base font-bold text-slate-900">{formatMoney(totalCartMinor)}</p>
+              <p className="text-xs text-text-muted">
+                {totalCartCount} {totalCartCount > 1 ? 'items' : 'item'} in cart
+              </p>
+              <p className="text-base font-bold text-text">
+                {formatMoney(totalCartMinor, 'USD')}
+              </p>
             </div>
-            <Button variant="primary" onClick={onViewCart} className="px-5">
+            <Button variant="primary" size="md" onClick={handleViewCartNavigation} className="px-5">
               Review Cart &bull; Checkout
             </Button>
           </div>
