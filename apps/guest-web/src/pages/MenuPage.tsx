@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Search, ShoppingBag, X } from 'lucide-react';
+import { ChevronLeft, Search, X } from 'lucide-react';
 import { CartItem, MenuItem } from '@conciergeiq/contracts';
 import { retrieveGuestSession } from '../features/guest-session';
+import { useCartStore, CartBottomBar } from '../features/cart';
 import {
   useGuestMenu,
   CategoryFilterTabs,
@@ -12,7 +13,6 @@ import {
   EmptyCategoryView,
   GuestMenuItem,
   CustomizedCartItemPayload,
-  formatCurrencyAmount,
 } from '../features/menu';
 
 export interface MenuPageProperties {
@@ -73,6 +73,8 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
   const menuItems = externalMenuItems ?? fetchedMenuItems;
   const isMenuLoading = externalIsLoading ?? isQueryLoading;
 
+  const addItemToCartStore = useCartStore((storeState) => storeState.addItem);
+
   const handleBackNavigation = () => {
     if (onBack) {
       onBack();
@@ -105,6 +107,13 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
     if (externalAddToCart) {
       externalAddToCart(customizedPayload);
     }
+
+    // Persist to Zustand cart store
+    addItemToCartStore(
+      customizedPayload.item,
+      customizedPayload.quantity,
+      customizedPayload.specialInstructions
+    );
 
     setInternalCart((previousCart) => {
       const existingCartEntry = previousCart.find(
@@ -157,18 +166,6 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
 
     return resultItems;
   }, [menuItems, activeCategory, searchQuery]);
-
-  // Aggregate cart counters
-  const totalCartCount = activeCart.reduce(
-    (runningCount, cartEntry) => runningCount + cartEntry.quantity,
-    0
-  );
-  const totalCartMinor = activeCart.reduce(
-    (runningTotal, cartEntry) =>
-      runningTotal + cartEntry.item.priceMinor * cartEntry.quantity,
-    0
-  );
-  const formattedCartTotal = formatCurrencyAmount(totalCartMinor, 'NGN');
 
   const normalizedPanelIdentifier = `category-panel-${activeCategory.toLowerCase().replace(/\s+/g, '-')}`;
   const associatedTabIdentifier = `category-tab-${activeCategory.toLowerCase().replace(/\s+/g, '-')}`;
@@ -297,35 +294,11 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
         onAddToCart={handleAddToCartFromModal}
       />
 
-      {/* Floating Bottom Cart Bar (UI: G02) */}
-      {totalCartCount > 0 && (
-        <aside
-          aria-label="Floating cart summary"
-          className="fixed bottom-16 left-0 right-0 p-3.5 z-30 max-w-md mx-auto"
-        >
-          <button
-            type="button"
-            onClick={handleViewCartNavigation}
-            aria-label={`View cart with ${totalCartCount} items totaling ${formattedCartTotal}`}
-            data-testid="floating-view-cart-button"
-            className="w-full py-3 px-4 rounded-2xl bg-slate-900 text-white font-bold text-xs flex items-center justify-between shadow-elevation-high hover:bg-slate-800 active:scale-[0.99] transition-all"
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[11px] flex items-center justify-center">
-                {totalCartCount}
-              </span>
-              <span className="tracking-wide">View cart</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-amber-400 font-extrabold text-sm">
-                {formattedCartTotal}
-              </span>
-              <ShoppingBag className="w-4 h-4 text-white/80" />
-            </div>
-          </button>
-        </aside>
-      )}
+      {/* Persistent Sticky Cart Trigger Bar (UI: G02 & G04) */}
+      <CartBottomBar
+        onViewCart={handleViewCartNavigation}
+        cart={externalCart}
+      />
     </div>
   );
 };
