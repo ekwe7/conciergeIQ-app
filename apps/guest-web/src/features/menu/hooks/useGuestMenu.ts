@@ -144,15 +144,15 @@ export function useGuestMenu(
         >('/api/v1/guest/menu');
 
         if (Array.isArray(responseData)) {
-          return responseData;
+          return responseData.length > 0 ? responseData : DEFAULT_FALLBACK_MENU_ITEMS;
         }
 
         if (responseData && Array.isArray(responseData.items)) {
-          return responseData.items;
+          return responseData.items.length > 0 ? responseData.items : DEFAULT_FALLBACK_MENU_ITEMS;
         }
 
         if (responseData && Array.isArray(responseData.menu)) {
-          return responseData.menu;
+          return responseData.menu.length > 0 ? responseData.menu : DEFAULT_FALLBACK_MENU_ITEMS;
         }
 
         return DEFAULT_FALLBACK_MENU_ITEMS;
