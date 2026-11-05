@@ -1,51 +1,30 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "../../packages/ui/src/**/*.{js,ts,jsx,tsx}"
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        brand: {
-          DEFAULT: 'var(--color-brand)',
-          strong: 'var(--color-brand-strong)',
-          50: '#ecfdf5',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-        },
-        surface: {
-          DEFAULT: 'var(--color-surface)',
-          muted: 'var(--color-surface-muted)',
-        },
-        text: {
-          DEFAULT: 'var(--color-text)',
-          muted: 'var(--color-text-muted)',
-        },
-        border: {
-          DEFAULT: 'var(--color-border)',
-        },
+        canvas: 'var(--canvas)',
+        surface: 'var(--surface)',
+        sunken: 'var(--sunken)',
+        line: { DEFAULT: 'var(--line)', strong: 'var(--line-strong)' },
+        ink: { DEFAULT: 'var(--ink)', 2: 'var(--ink-2)', 3: 'var(--ink-3)' },
+        accent: { DEFAULT: 'var(--accent)', hover: 'var(--accent-hover)', soft: 'var(--accent-soft)' },
         status: {
-          success: 'var(--color-success)',
-          warning: 'var(--color-warning)',
-          danger: 'var(--color-danger)',
-          info: 'var(--color-info)',
+          pending: 'var(--pending)',
+          progress: 'var(--progress)',
+          done: 'var(--done)',
+          void: 'var(--void)',
         },
+        danger: { DEFAULT: 'var(--danger)', soft: 'var(--danger-soft)', line: 'var(--danger-line)' },
+        'pending-line': 'var(--pending-line)',
+        scrim: 'var(--scrim)',
+        notice: { DEFAULT: 'var(--notice)', line: 'var(--notice-line)' },
       },
-      borderRadius: {
-        sm: 'var(--radius-sm)',
-        md: 'var(--radius-md)',
-        lg: 'var(--radius-lg)',
-      },
-      boxShadow: {
-        'elevation-low': 'var(--elevation-low)',
-        'elevation-mid': 'var(--elevation-mid)',
-        'elevation-high': 'var(--elevation-high)',
-      },
+      borderRadius: { DEFAULT: 'var(--radius)' },
+      boxShadow: { overlay: 'var(--shadow-overlay)' },
+      fontSize: { '2xs': ['11px', '16px'] },
     },
   },
   plugins: [],
 };
-

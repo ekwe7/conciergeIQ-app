@@ -99,6 +99,20 @@ export function normalizeApiError(
   responseBody: unknown,
   fallbackMessage: string = 'An unexpected server error occurred.'
 ): AppApiError {
+  // The ConciergeIQ API answers errors as `{ error: { code, message, details } }`.
+  const envelope = (responseBody as { error?: unknown } | null)?.error;
+  if (envelope !== null && typeof envelope === 'object' && !Array.isArray(envelope)) {
+    const { code, message, details } = envelope as { code?: unknown; message?: unknown; details?: unknown };
+    return new AppApiError({
+      message: typeof message === 'string' && message.length > 0 ? message : fallbackMessage,
+      statusCode: responseStatusCode,
+      errorCode: typeof code === 'string' ? code : deriveCanonicalErrorCodeFromStatus(responseStatusCode),
+      errorTitle: 'API Request Error',
+      validationErrors: Array.isArray(details) ? details : undefined,
+      rawPayload: responseBody,
+    });
+  }
+
   if (responseBody !== null && typeof responseBody === 'object') {
     const problemDetails = responseBody as Rfc7807ProblemDetails;
 
