@@ -1,17 +1,74 @@
-@import '@conciergeiq/ui/tokens.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Dashboard palette: warm neutrals carry the interface; colour is reserved
+ * for meaning (status dots, destructive actions, alerts) and one quiet
+ * accent for the primary action. Status is always paired with text.
+ */
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: var(--color-text);
-  background-color: var(--color-surface-muted);
+  --canvas: #f6f6f3;
+  --surface: #ffffff;
+  --sunken: #efefeb;
+  --line: #e3e3dd;
+  --line-strong: #cfcfc7;
+
+  --ink: #1b1d1c;
+  --ink-2: #4b4f4c;
+  --ink-3: #7a7e7a;
+
+  --accent: #23463e;
+  --accent-hover: #1a3730;
+  --accent-soft: #e8eeec;
+
+  --pending: #a8741a;
+  --progress: #3d5f8a;
+  --done: #3f6e55;
+  --void: #9a3f36;
+
+  --danger: #9a3f36;
+  --danger-soft: #f7ecea;
+  --danger-line: #e6c7c2;
+  --pending-line: #e3d2ad;
+  --scrim: rgb(27 29 28 / 0.32);
+  --notice: #f6f1e4;
+  --notice-line: #e6d9b8;
+
+  --focus: #23463e;
+  --radius: 8px;
+  --shadow-overlay: 0 12px 32px -8px rgb(20 24 22 / 0.18), 0 2px 6px rgb(20 24 22 / 0.06);
+
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  color: var(--ink);
+  background-color: var(--canvas);
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
   margin: 0;
-  padding: 0;
   min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

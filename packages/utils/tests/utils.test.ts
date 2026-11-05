@@ -198,6 +198,15 @@ describe('Shared Utilities - RFC 7807 Error Normalization', () => {
     expect(normalizedError.message).toBe('Field roomNumber is required.');
     expect(normalizedError.validationErrors).toHaveLength(1);
   });
+
+  it('reads the ConciergeIQ API error envelope', () => {
+    const normalizedError = normalizeApiError(409, {
+      error: { code: 'RULE_VIOLATION', message: 'Room 214 is out of order' },
+    });
+    expect(normalizedError.statusCode).toBe(409);
+    expect(normalizedError.errorCode).toBe('RULE_VIOLATION');
+    expect(normalizedError.message).toBe('Room 214 is out of order');
+  });
 });
 
 describe('Shared Utilities - HTTP API Client with Mock Service Worker', () => {
