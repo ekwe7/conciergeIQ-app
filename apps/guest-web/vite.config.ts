@@ -11,16 +11,6 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
-        configure: (proxyInstance) => {
-          proxyInstance.on('error', (proxyError, clientRequest, serverResponse) => {
-            if (serverResponse && !serverResponse.headersSent) {
-              serverResponse.writeHead(200, {
-                'Content-Type': 'application/json',
-              });
-              serverResponse.end(JSON.stringify({ items: [] }));
-            }
-          });
-        },
       },
       '/ws': {
         target: 'ws://localhost:3000',
