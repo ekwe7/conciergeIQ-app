@@ -1,5 +1,7 @@
 import {
   BedDouble,
+  BellRing,
+  MessagesSquare,
   CreditCard,
   LayoutGrid,
   LogOut,
@@ -99,6 +101,8 @@ function Sidebar() {
   const administration: NavItem[] = [
     { to: '/qr-codes', label: 'Rooms & QR codes', icon: QrCode, permission: Permission.MANAGE_ROOMS_AND_QR_CODES },
     { to: '/staff', label: 'Staff & roles', icon: UsersRound, permission: Permission.MANAGE_STAFF },
+    { to: '/escalations', label: 'Escalations', icon: BellRing, permission: Permission.VIEW_ACTIVITY_LOG },
+    { to: '/concierge', label: 'Concierge answers', icon: MessagesSquare, permission: Permission.MANAGE_CONCIERGE_CONTENT },
     { to: '/activity', label: 'Activity log', icon: ScrollText, permission: Permission.VIEW_ACTIVITY_LOG },
     { to: '/settings', label: 'Hotel settings', icon: Settings, permission: Permission.MANAGE_HOTEL_SETTINGS },
   ].filter((item) => can(item.permission));

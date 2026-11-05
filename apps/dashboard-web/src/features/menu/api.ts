@@ -30,6 +30,18 @@ export interface ItemInput {
   description?: string;
   price: number;
   isAvailable?: boolean;
+  isFeatured?: boolean;
+  pairsWith?: string[];
+  translations?: MenuItem['translations'];
+}
+
+export interface CategoryInput {
+  categoryId?: string;
+  name: string;
+  sortOrder?: number;
+  availableFrom: string | null;
+  availableUntil: string | null;
+  translations: MenuCategory['translations'];
 }
 
 export const useSaveItem = () =>
@@ -40,10 +52,10 @@ export const useSaveItem = () =>
 export const useDeleteItem = () => useMenuMutation((itemId: string) => api.delete<void>(`/menu/items/${itemId}`));
 
 export const useSaveCategory = () =>
-  useMenuMutation(({ categoryId, name, sortOrder }: { categoryId?: string; name: string; sortOrder?: number }) =>
+  useMenuMutation(({ categoryId, sortOrder, ...fields }: CategoryInput) =>
     categoryId
-      ? api.patch<MenuCategory>(`/menu/categories/${categoryId}`, { name })
-      : api.post<MenuCategory>('/menu/categories', { name, sortOrder }),
+      ? api.patch<MenuCategory>(`/menu/categories/${categoryId}`, fields)
+      : api.post<MenuCategory>('/menu/categories', { ...fields, sortOrder }),
   );
 
 export const useDeleteCategory = () =>

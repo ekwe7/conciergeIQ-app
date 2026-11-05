@@ -115,6 +115,17 @@ export interface StayBill {
   openOrders: { orderId: string; orderNumber: number; status: string; itemsSummary: string }[];
 }
 
+export type Language = 'en' | 'fr' | 'ha' | 'yo' | 'ar';
+export type TranslatedLanguage = Exclude<Language, 'en'>;
+export const LANGUAGES: readonly Language[] = ['en', 'fr', 'ha', 'yo', 'ar'];
+export const LANGUAGE_NAME: Record<Language, string> = {
+  en: 'English',
+  fr: 'French · Français',
+  ha: 'Hausa',
+  yo: 'Yorùbá',
+  ar: 'Arabic · العربية',
+};
+
 export interface MenuItem {
   id: string;
   categoryId: string;
@@ -123,13 +134,79 @@ export interface MenuItem {
   price: number;
   photoUrl: string | null;
   isAvailable: boolean;
+  isFeatured: boolean;
+  /** Suggested alongside this item: "Add a drink?". */
+  pairsWith: string[];
+  translations: Partial<Record<TranslatedLanguage, { name: string; description?: string }>>;
 }
 
 export interface MenuCategory {
   id: string;
   name: string;
   sortOrder: number;
+  /** Service hours in the hotel's time zone; both null means all day. */
+  availableFrom: string | null;
+  availableUntil: string | null;
+  isOpenNow: boolean;
+  translations: Partial<Record<TranslatedLanguage, { name: string }>>;
   items: MenuItem[];
+}
+
+export interface HotelBranding {
+  hotelId: string;
+  hotelName: string;
+  /** Relative to the API origin, e.g. /api/v1/hotels/:id/logo?v=… */
+  logoUrl: string | null;
+  brandColor: string;
+  accentColor: string;
+  welcomeHeadline: Partial<Record<Language, string>>;
+  languages: Language[];
+}
+
+export type EscalationChannel = 'SMS' | 'WHATSAPP';
+
+export interface EscalationStep {
+  enabled: boolean;
+  afterSeconds: number;
+  channel: EscalationChannel;
+  recipientName: string;
+  phone: string;
+}
+
+export interface EscalationRules {
+  manager: EscalationStep;
+  admin: EscalationStep;
+  updatedAt: string | null;
+}
+
+export interface EscalationAlert {
+  id: string;
+  orderId: string;
+  orderNumber: number;
+  roomNumber: string;
+  level: 1 | 2;
+  channel: EscalationChannel;
+  recipientName: string;
+  status: 'SENDING' | 'SENT' | 'FAILED';
+  error: string | null;
+  sentAt: string;
+  acceptedAfterSeconds: number | null;
+  orderStatus: string;
+}
+
+export interface TestAlertResult {
+  status: 'SENT' | 'FAILED' | 'SENDING';
+  error: string | null;
+  message: string;
+}
+
+export interface KnowledgeArticle {
+  id: string;
+  title: string;
+  body: string;
+  isPublished: boolean;
+  updatedAt: string;
+  updatedBy: string;
 }
 
 export interface Payment {
@@ -206,4 +283,15 @@ export type StaffSocketMessage =
       payload: { orderId: string; orderNumber: number; amount: number; method: PaymentMethod; recordedAt: string };
     }
   | { type: 'ITEM_AVAILABILITY_CHANGED'; payload: { itemId: string; itemName: string; isAvailable: boolean } }
+  | {
+      type: 'ORDER_ESCALATED';
+      payload: {
+        orderId: string;
+        orderNumber: number;
+        roomNumber: string;
+        level: 1 | 2;
+        recipientName: string;
+        waitedSeconds: number;
+      };
+    }
   | { type: 'SESSION_REVOKED'; payload: { reason: 'deactivated' } };
