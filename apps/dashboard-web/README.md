@@ -4,6 +4,32 @@ The desktop and tablet web application for hotel staff, receptionists, managers,
 
 ---
 
+## Running it against the API
+
+The dashboard talks to the backend in [ekwe7/conciergeIQ](https://github.com/ekwe7/conciergeIQ). In development, Vite proxies `/api` and `/ws` to `http://localhost:3000`, so no configuration is needed:
+
+```bash
+# in conciergeIQ (backend)
+pnpm db:up && pnpm db:migrate && pnpm db:seed && pnpm dev:api
+
+# in this repo
+pnpm dev:dashboard        # http://localhost:5174
+```
+
+Sign in as `reception@demo-hotel.test`, `manager@`, `admin@` or `kitchen@demo-hotel.test` with `ChangeMe123!` to see each role.
+
+For a deployed build, set `VITE_API_BASE_URL` (including `/api/v1`) and `VITE_REALTIME_URL` (the `/ws/staff` URL). Both are public.
+
+### How it works
+
+- **Types**: `src/lib/api-types.ts` mirrors the backend contracts. Amounts are decimal major units, as the API sends them.
+- **Sessions**: the access token is kept in memory and the single-use refresh token in `sessionStorage`. A 401 triggers one shared refresh, then a retry.
+- **Live updates**: one WebSocket per tab (`src/lib/websocket-client.ts`) invalidates the queries each event affects, and refetches everything after a reconnect.
+- **Roles**: `src/lib/permissions.ts` mirrors the API role table to hide what a role cannot use. The API still enforces every rule.
+- **Design**: warm neutrals throughout, with one dark green for primary actions. Colour is reserved for meaning, always paired with text (a dot beside "Pending"). Tokens live in `src/styles/globals.css`.
+
+---
+
 ## Key Capabilities
 
 - **Role-Based Access Control:** Role-tailored views and permitted actions for Staff, Receptionists, Managers, and Admins/Owners.
