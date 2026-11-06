@@ -133,7 +133,6 @@ describe('MenuPage Component Suite', () => {
       expect(screen.queryByText('Artisan Avocado & Poached Egg Toast')).toBeNull();
     });
   }, 15000);
-  });
 
   it('renders loading skeleton while query is in-flight', async () => {
     renderMenuPageWithQueryClient({ isLoading: true });

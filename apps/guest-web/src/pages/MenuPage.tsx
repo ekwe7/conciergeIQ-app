@@ -4,9 +4,6 @@ import { ChevronLeft, Search, X } from 'lucide-react';
 import { CartItem, MenuItem } from '@conciergeiq/contracts';
 import { retrieveGuestSession } from '../features/guest-session';
 import { useCartStore, CartBottomBar } from '../features/cart';
-import { ChevronLeft, Search, ShoppingBag, X } from 'lucide-react';
-import { CartItem, MenuItem } from '@conciergeiq/contracts';
-import { retrieveGuestSession } from '../features/guest-session';
 import {
   useGuestMenu,
   CategoryFilterTabs,
@@ -16,7 +13,6 @@ import {
   EmptyCategoryView,
   GuestMenuItem,
   CustomizedCartItemPayload,
-  formatCurrencyAmount,
 } from '../features/menu';
 
 export interface MenuPageProperties {
@@ -105,12 +101,6 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
     setSelectedItemForCustomization(null);
   };
 
-
-  const handleCloseItemDetail = () => {
-    setIsCustomizationModalOpen(false);
-    setSelectedItemForCustomization(null);
-  };
-
   const handleAddToCartFromModal = (
     customizedPayload: CustomizedCartItemPayload
   ) => {
@@ -180,74 +170,6 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
   const normalizedPanelIdentifier = `category-panel-${activeCategory.toLowerCase().replace(/\s+/g, '-')}`;
   const associatedTabIdentifier = `category-tab-${activeCategory.toLowerCase().replace(/\s+/g, '-')}`;
 
-
-    setInternalCart((previousCart) => {
-      const existingCartEntry = previousCart.find(
-        (cartEntry) =>
-          cartEntry.item.id === customizedPayload.item.id &&
-          (cartEntry.specialInstructions || '') ===
-            (customizedPayload.specialInstructions || '')
-      );
-
-      if (existingCartEntry) {
-        return previousCart.map((cartEntry) =>
-          cartEntry === existingCartEntry
-            ? {
-                ...cartEntry,
-                quantity: cartEntry.quantity + customizedPayload.quantity,
-              }
-            : cartEntry
-        );
-      }
-
-      const newCartEntry: CartItem = {
-        item: customizedPayload.item,
-        quantity: customizedPayload.quantity,
-        specialInstructions: customizedPayload.specialInstructions || undefined,
-      };
-
-      return [...previousCart, newCartEntry];
-    });
-  };
-
-  // Filter menu items by active category and search keyword
-  const filteredMenuItems = useMemo(() => {
-    let resultItems = menuItems;
-
-    if (activeCategory !== 'All') {
-      resultItems = resultItems.filter(
-        (menuItem) =>
-          menuItem.category.toLowerCase() === activeCategory.toLowerCase()
-      );
-    }
-
-    if (searchQuery.trim().length > 0) {
-      const normalizedQuery = searchQuery.trim().toLowerCase();
-      resultItems = resultItems.filter(
-        (menuItem) =>
-          menuItem.name.toLowerCase().includes(normalizedQuery) ||
-          menuItem.description.toLowerCase().includes(normalizedQuery)
-      );
-    }
-
-    return resultItems;
-  }, [menuItems, activeCategory, searchQuery]);
-
-  // Aggregate cart counters
-  const totalCartCount = activeCart.reduce(
-    (runningCount, cartEntry) => runningCount + cartEntry.quantity,
-    0
-  );
-  const totalCartMinor = activeCart.reduce(
-    (runningTotal, cartEntry) =>
-      runningTotal + cartEntry.item.priceMinor * cartEntry.quantity,
-    0
-  );
-  const formattedCartTotal = formatCurrencyAmount(totalCartMinor, 'NGN');
-
-  const normalizedPanelIdentifier = `category-panel-${activeCategory.toLowerCase().replace(/\s+/g, '-')}`;
-  const associatedTabIdentifier = `category-tab-${activeCategory.toLowerCase().replace(/\s+/g, '-')}`;
-
   return (
     <div className="min-h-full flex flex-col justify-between pb-28 bg-surface">
       {/* Top Mobile Header (UI: G02) */}
@@ -268,13 +190,6 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
             </p>
           </div>
         </div>
-
-        {/* Room Identification Pill */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-elevation-low">
-          <span>Room {roomNumber}</span>
-        </div>
-      </header>
-
 
         {/* Room Identification Pill */}
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-elevation-low">
@@ -384,35 +299,6 @@ export const MenuPage: React.FC<MenuPageProperties> = ({
         onViewCart={handleViewCartNavigation}
         cart={externalCart}
       />
-      {/* Floating Bottom Cart Bar (UI: G02) */}
-      {totalCartCount > 0 && (
-        <aside
-          aria-label="Floating cart summary"
-          className="fixed bottom-16 left-0 right-0 p-3.5 z-30 max-w-md mx-auto"
-        >
-          <button
-            type="button"
-            onClick={handleViewCartNavigation}
-            aria-label={`View cart with ${totalCartCount} items totaling ${formattedCartTotal}`}
-            data-testid="floating-view-cart-button"
-            className="w-full py-3 px-4 rounded-2xl bg-slate-900 text-white font-bold text-xs flex items-center justify-between shadow-elevation-high hover:bg-slate-800 active:scale-[0.99] transition-all"
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[11px] flex items-center justify-center">
-                {totalCartCount}
-              </span>
-              <span className="tracking-wide">View cart</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-amber-400 font-extrabold text-sm">
-                {formattedCartTotal}
-              </span>
-              <ShoppingBag className="w-4 h-4 text-white/80" />
-            </div>
-          </button>
-        </aside>
-      )}
     </div>
   );
 };
