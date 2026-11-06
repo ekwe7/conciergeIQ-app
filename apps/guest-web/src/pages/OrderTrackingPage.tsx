@@ -1,193 +1,352 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Badge } from '@conciergeiq/ui';
-import { formatMoney, formatDate } from '@conciergeiq/utils';
 import { Order, OrderStatus } from '@conciergeiq/contracts';
-import { Clock, ChefHat, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { formatTimeOnly } from '@conciergeiq/utils';
+import {
+  Clock,
+  ChefHat,
+  CheckCircle2,
+  XCircle,
+  ArrowLeft,
+  PhoneCall,
+  UtensilsCrossed,
+  Radio,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  useTrackOrder,
+  OrderProgressStepper,
+  OrderCancellationBanner,
+  OrderItemsReceipt,
+} from '../features/orders';
 
 export interface OrderTrackingPageProperties {
   order?: Order | null;
   onBackToMenu?: () => void;
+  orderIdOverride?: string;
 }
 
-interface TrackingStep {
-  statusKey: OrderStatus;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  description: string;
-}
-
-const TRACKING_STEPS: TrackingStep[] = [
-  { statusKey: 'PENDING', label: 'Order Received', icon: Clock, description: 'Kitchen acknowledged ticket' },
-  { statusKey: 'IN_PROGRESS', label: 'In the Kitchen', icon: ChefHat, description: 'Chef preparing your dishes' },
-  { statusKey: 'DELIVERED', label: 'Delivered', icon: CheckCircle2, description: 'Delivered to room door' },
-];
-
-const DEFAULT_SAMPLE_ORDER: Order = {
-  id: 'ord_KITCHEN_9921',
-  roomNumber: '402',
-  stayId: 'stay_demo_9921',
+const FALLBACK_DEFAULT_ORDER: Order = {
+  id: 'ord_demo_1042',
+  roomNumber: '101',
+  stayId: 'stay_demo_101',
   hotelId: 'htl_lagos_grand',
-  status: 'IN_PROGRESS',
+  status: 'PENDING',
   items: [
     {
-      itemId: 'item_2',
-      name: 'Truffle Wagyu Burger & Crisp Fries',
+      itemId: 'item_jollof_deluxe',
+      name: 'Jollof Rice & Roasted Chicken',
       quantity: 1,
       unitPriceMinor: 2400,
       totalMinor: 2400,
+      specialInstructions: 'Extra spicy, plantain on the side',
     },
   ],
   subtotalMinor: 2400,
   taxMinor: 192,
   totalMinor: 2592,
-  createdAt: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-  updatedAt: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
+/**
+ * Mobile Live Order Tracking Page (UI: G05) with multi-step animated progress indicators,
+ * real-time WebSocket state transitions, cancellation alert banners, and receipt breakdowns.
+ */
 export const OrderTrackingPage: React.FC<OrderTrackingPageProperties> = ({
   order: externalOrder,
   onBackToMenu,
+  orderIdOverride,
 }) => {
   const navigate = useNavigate();
   const routeParameters = useParams<{ orderId: string }>();
 
-  const activeOrder: Order | null =
-    externalOrder !== undefined
-      ? externalOrder
-      : routeParameters.orderId
-      ? { ...DEFAULT_SAMPLE_ORDER, id: routeParameters.orderId }
-      : DEFAULT_SAMPLE_ORDER;
+  const targetOrderId: string | undefined =
+    orderIdOverride ?? externalOrder?.id ?? routeParameters.orderId;
 
-  const handleBackNavigation = () => {
+  const {
+    order: trackedOrder,
+    isLoading: isOrderQueryLoading,
+    isError: isOrderQueryError,
+    refetch: refetchOrderDetails,
+    isWebSocketConnected,
+    liveStatusAnnouncement,
+  } = useTrackOrder(targetOrderId, {
+    initialOrder: externalOrder ?? (targetOrderId ? null : FALLBACK_DEFAULT_ORDER),
+  });
+
+  const activeOrder: Order | null =
+    trackedOrder ?? externalOrder ?? (targetOrderId ? null : FALLBACK_DEFAULT_ORDER);
+
+  const handleBackNavigation = useCallback(() => {
     if (onBackToMenu) {
       onBackToMenu();
     } else {
       navigate('/menu');
     }
-  };
+  }, [onBackToMenu, navigate]);
 
-  if (!activeOrder) {
+  const handleCallFrontDesk = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.location.href = 'tel:0';
+    }
+  }, []);
+
+  // Loading Skeleton View
+  if (isOrderQueryLoading && !activeOrder) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
-        <Clock className="w-12 h-12 text-text-muted mb-4 opacity-40" />
-        <h2 className="text-lg font-bold text-text mb-1">No Active Order</h2>
-        <p className="text-xs text-text-muted max-w-xs mb-6">
-          You don't have any orders currently processing. Order your favorite meal now!
-        </p>
-        <Button variant="primary" onClick={handleBackNavigation}>
-          Browse Menu
-        </Button>
+      <div
+        role="status"
+        aria-label="Loading order progress"
+        className="min-h-full flex flex-col justify-between pb-20 animate-pulse"
+      >
+        <div className="bg-surface border-b border-border px-4 py-3.5 flex items-center justify-between">
+          <div className="w-8 h-8 rounded-full bg-surface-muted" />
+          <div className="h-5 w-28 bg-surface-muted rounded" />
+          <div className="h-5 w-16 bg-surface-muted rounded-full" />
+        </div>
+
+        <div className="p-4 space-y-4 max-w-lg mx-auto w-full flex-1">
+          <div className="h-44 bg-surface rounded-2xl border border-border" />
+          <div className="h-52 bg-surface rounded-2xl border border-border" />
+          <div className="h-32 bg-surface rounded-2xl border border-border" />
+        </div>
       </div>
     );
   }
 
-  const currentStepIndex =
-    activeOrder.status === 'CANCELLED'
-      ? -1
-      : TRACKING_STEPS.findIndex((stepItem) => stepItem.statusKey === activeOrder.status);
-
-  const resolveBadgeVariant = (orderStatus: OrderStatus): 'neutral' | 'info' | 'warning' | 'success' | 'danger' => {
-    switch (orderStatus) {
-      case 'DELIVERED':
-        return 'success';
-      case 'CANCELLED':
-        return 'danger';
-      case 'IN_PROGRESS':
-        return 'info';
-      case 'PENDING':
-        return 'warning';
-      default:
-        return 'neutral';
-    }
-  };
-
-  return (
-    <div className="min-h-full flex flex-col justify-between pb-20">
-      {/* Header */}
-      <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
-        <button
-          type="button"
-          aria-label="Back to Menu"
-          onClick={handleBackNavigation}
-          className="p-2 -ml-2 text-text hover:bg-surface-muted rounded-full transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-base font-bold text-text">Order #{activeOrder.id}</h1>
-        <div className="w-5" />
-      </div>
-
-      <div className="p-4 space-y-4 max-w-lg mx-auto w-full flex-1">
-        {/* Status Stepper Banner */}
-        <Card className="p-5 text-center bg-surface shadow-elevation-low">
-          <Badge
-            variant={resolveBadgeVariant(activeOrder.status)}
-            className="mb-2"
+  // Error / Not Found View
+  if ((isOrderQueryError && !activeOrder) || !activeOrder) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center max-w-sm mx-auto">
+        <div className="w-16 h-16 rounded-full bg-status-warning/15 text-status-warning flex items-center justify-center mb-4">
+          <Clock className="w-8 h-8 opacity-75" />
+        </div>
+        <h2 className="text-xl font-bold text-text mb-1.5">No Active Order Found</h2>
+        <p className="text-xs text-text-muted leading-relaxed mb-6">
+          We could not locate this order ticket. It may have expired or belongs to a different room session.
+        </p>
+        <div className="flex flex-col gap-2.5 w-full">
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => navigate('/menu')}
+            className="w-full"
           >
-            Status: {activeOrder.status.replace('_', ' ')}
-          </Badge>
-
-          <h2 className="text-xl font-bold text-text">
-            {activeOrder.status === 'PENDING' && 'Order Transmitted to Kitchen'}
-            {activeOrder.status === 'IN_PROGRESS' && 'Dish is Sizzling in Kitchen'}
-            {activeOrder.status === 'DELIVERED' && 'Delivered to Room'}
-            {activeOrder.status === 'CANCELLED' && 'Order Cancelled'}
-          </h2>
-          <p className="text-xs text-text-muted mt-1">
-            Room {activeOrder.roomNumber} &bull; Ordered at {formatDate(activeOrder.createdAt)}
-          </p>
-
-          {/* Stepper Visualization */}
-          <div className="mt-6 flex items-center justify-between relative px-4">
-            <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-0.5 bg-border -z-0" />
-            {TRACKING_STEPS.map((stepItem, stepIndex) => {
-              const isPastOrCurrent = currentStepIndex >= stepIndex;
-              const StepIconComponent = stepItem.icon;
-              return (
-                <div key={stepItem.statusKey} className="flex flex-col items-center relative z-10">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                      isPastOrCurrent
-                        ? 'bg-brand text-white shadow-elevation-low'
-                        : 'bg-surface border-2 border-border text-text-muted'
-                    }`}
-                  >
-                    <StepIconComponent className="w-4 h-4" />
-                  </div>
-                  <span className="text-[11px] font-semibold mt-2 text-text">
-                    {stepItem.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* Order Details List */}
-        <Card className="p-4 divide-y divide-border shadow-elevation-low">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-2">Order Items</h3>
-          {activeOrder.items.map((orderItem) => (
-            <div key={orderItem.itemId} className="py-2.5 flex justify-between items-center text-xs">
-              <span className="text-text">
-                <strong className="text-brand mr-1.5">{orderItem.quantity}x</strong>
-                {orderItem.name}
-              </span>
-              <span className="font-semibold text-text">{formatMoney(orderItem.totalMinor, 'USD')}</span>
-            </div>
-          ))}
-          <div className="pt-3 flex justify-between items-center text-sm font-bold text-text">
-            <span>Total Billed</span>
-            <span className="text-brand">{formatMoney(activeOrder.totalMinor, 'USD')}</span>
-          </div>
-        </Card>
-
-        <div className="pt-2">
-          <Button variant="outline" className="w-full" onClick={handleBackNavigation}>
-            Back to In-Room Menu
+            Browse Food Menu
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => refetchOrderDetails()}
+            className="w-full flex items-center justify-center gap-1.5"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Try Again</span>
           </Button>
         </div>
       </div>
+    );
+  }
+
+  const orderStatus: OrderStatus = activeOrder.status;
+  const isOrderCancelled: boolean = orderStatus === 'CANCELLED';
+
+  const cancellationReasonText: string | null =
+    (activeOrder as { rejectionReason?: string | null; cancelReason?: string | null })
+      .rejectionReason ??
+    (activeOrder as { rejectionReason?: string | null; cancelReason?: string | null })
+      .cancelReason ??
+    null;
+
+  const resolveStatusHeroDetails = () => {
+    switch (orderStatus) {
+      case 'PENDING':
+        return {
+          title: 'Order received',
+          subtitle: `Sent to staff instantly · ${formatTimeOnly(activeOrder.createdAt)}`,
+          badgeVariant: 'warning' as const,
+          badgeLabel: 'ORDER RECEIVED',
+          iconContainerBg: 'bg-amber-100 text-amber-800',
+          HeroIcon: Clock,
+        };
+      case 'IN_PROGRESS':
+        return {
+          title: 'Being prepared',
+          subtitle: `Accepted by kitchen · ${formatTimeOnly(activeOrder.updatedAt || activeOrder.createdAt)}`,
+          badgeVariant: 'info' as const,
+          badgeLabel: 'IN PROGRESS',
+          iconContainerBg: 'bg-sky-100 text-sky-800',
+          HeroIcon: ChefHat,
+        };
+      case 'DELIVERED':
+        return {
+          title: 'Delivered to room',
+          subtitle: `Arrived at Room ${activeOrder.roomNumber} · ${formatTimeOnly(activeOrder.updatedAt || activeOrder.createdAt)}`,
+          badgeVariant: 'success' as const,
+          badgeLabel: 'DELIVERED',
+          iconContainerBg: 'bg-emerald-100 text-emerald-800',
+          HeroIcon: CheckCircle2,
+        };
+      case 'CANCELLED':
+      default:
+        return {
+          title: 'Order cancelled',
+          subtitle: 'This ticket could not be completed by staff',
+          badgeVariant: 'danger' as const,
+          badgeLabel: 'CANCELLED',
+          iconContainerBg: 'bg-rose-100 text-rose-800',
+          HeroIcon: XCircle,
+        };
+    }
+  };
+
+  const heroDetails = resolveStatusHeroDetails();
+  const HeroStatusIcon = heroDetails.HeroIcon;
+
+  return (
+    <div className="min-h-full flex flex-col justify-between pb-24">
+      {/* Screen Reader Live Region for polite real-time status transitions */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {liveStatusAnnouncement || `Current status is ${heroDetails.title}`}
+      </div>
+
+      {/* Top App Header */}
+      <header className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-20 shadow-elevation-low">
+        <button
+          type="button"
+          aria-label="Back to In-Room Menu"
+          onClick={handleBackNavigation}
+          className="p-2 -ml-2 text-text hover:bg-surface-muted rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand"
+        >
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+        </button>
+
+        <h1 className="text-sm font-bold text-text truncate max-w-[200px]">
+          Order #{activeOrder.id}
+        </h1>
+
+        <Badge variant="neutral" className="font-semibold text-xs py-0.5 px-2.5">
+          Room {activeOrder.roomNumber}
+        </Badge>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="p-4 space-y-4 max-w-lg mx-auto w-full flex-1">
+        {/* Hero Card matching prototype G05 */}
+        <Card className="p-6 text-center bg-gradient-to-b from-surface to-surface-muted/50 border-border shadow-elevation-low space-y-3">
+          <div
+            className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl shadow-elevation-low transition-transform duration-300 ${heroDetails.iconContainerBg}`}
+          >
+            <HeroStatusIcon className="w-10 h-10" aria-hidden="true" />
+          </div>
+
+          <div className="space-y-1">
+            <h2 className="text-2xl font-serif font-bold text-text tracking-tight">
+              {heroDetails.title}
+            </h2>
+            <p className="text-xs text-text-muted leading-relaxed font-normal">
+              {heroDetails.subtitle}
+            </p>
+          </div>
+
+          <div className="inline-flex items-center gap-2 pt-1">
+            <Badge
+              variant={heroDetails.badgeVariant}
+              className="text-xs px-3 py-1 font-bold tracking-wide flex items-center gap-1.5 shadow-sm"
+            >
+              {orderStatus === 'IN_PROGRESS' && (
+                <span className="w-2 h-2 rounded-full bg-sky-500 animate-ping inline-block" />
+              )}
+              {heroDetails.badgeLabel}
+            </Badge>
+          </div>
+        </Card>
+
+        {/* Cancellation Alert Banner */}
+        {isOrderCancelled && (
+          <OrderCancellationBanner
+            cancellationReason={cancellationReasonText}
+            onContactFrontDesk={handleCallFrontDesk}
+          />
+        )}
+
+        {/* Multi-Step Animated Progress Stepper */}
+        {!isOrderCancelled && (
+          <OrderProgressStepper
+            orderStatus={orderStatus}
+            createdAtIsoTimestamp={activeOrder.createdAt}
+            updatedAtIsoTimestamp={activeOrder.updatedAt}
+          />
+        )}
+
+        {/* Order Details Receipt */}
+        <OrderItemsReceipt
+          orderLineItems={activeOrder.items}
+          subtotalMinor={activeOrder.subtotalMinor}
+          taxMinor={activeOrder.taxMinor}
+          totalMinor={activeOrder.totalMinor}
+        />
+
+        {/* Real-time Connection Status Indicator */}
+        <div
+          aria-live="off"
+          className="flex items-center justify-center gap-2 text-xs text-text-muted pt-2 pb-1"
+        >
+          {isWebSocketConnected ? (
+            <>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Live
+              </span>
+              <span className="text-[11px]">Updates automatically</span>
+            </>
+          ) : (
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-[11px] text-text-muted">
+                Connecting · Updates via 30s refresh
+              </span>
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* Bottom Floating Navigation Actions */}
+      <footer className="fixed bottom-0 left-0 right-0 p-3 bg-surface/95 backdrop-blur border-t border-border z-30">
+        <div className="max-w-lg mx-auto grid grid-cols-2 gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={handleCallFrontDesk}
+            className="flex items-center justify-center gap-2 text-sm font-semibold py-3"
+          >
+            <PhoneCall className="w-4 h-4 text-text-muted" aria-hidden="true" />
+            <span>Call Desk</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={handleBackNavigation}
+            className="flex items-center justify-center gap-2 text-sm font-bold py-3 shadow-elevation-low"
+          >
+            <UtensilsCrossed className="w-4 h-4" aria-hidden="true" />
+            <span>Order More</span>
+          </Button>
+        </div>
+      </footer>
     </div>
   );
 };
