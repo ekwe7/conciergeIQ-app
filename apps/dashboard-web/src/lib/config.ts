@@ -9,3 +9,10 @@ function defaultRealtimeUrl(): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/ws/staff`;
 }
+
+/** Turns an API path such as a logo URL (`/api/v1/hotels/…/logo`) into a URL the browser can load. */
+export function apiAssetUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  if (/^https?:\/\//.test(config.apiBaseUrl)) return new URL(path, config.apiBaseUrl).toString();
+  return path;
+}

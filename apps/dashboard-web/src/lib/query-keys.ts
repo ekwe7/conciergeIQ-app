@@ -14,4 +14,7 @@ export const queryKeys = {
   payments: (hotelId: string) => ['hotel', hotelId, 'payments'] as const,
   staff: (hotelId: string) => ['hotel', hotelId, 'staff'] as const,
   activity: (hotelId: string) => ['hotel', hotelId, 'activity'] as const,
+  branding: (hotelId: string) => ['hotel', hotelId, 'branding'] as const,
+  escalations: (hotelId: string) => ['hotel', hotelId, 'escalations'] as const,
+  articles: (hotelId: string) => ['hotel', hotelId, 'articles'] as const,
 };
