@@ -1,4 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
+import { Value } from '@sinclair/typebox/value';
+
+export { Value, Type };
 
 /**
  * ============================================================================
@@ -236,6 +239,50 @@ export const VerifyGuestSessionRequestSchema = Type.Object({
   qrToken: Type.String({ minLength: 1 }),
 });
 export type VerifyGuestSessionRequest = Static<typeof VerifyGuestSessionRequestSchema>;
+
+export const ServiceRequestItemSchema = Type.Object({
+  itemId: Type.String({ minLength: 1 }),
+  name: Type.String({ minLength: 1 }),
+  quantity: Type.Integer({ minimum: 1 }),
+});
+export type ServiceRequestItem = Static<typeof ServiceRequestItemSchema>;
+
+export const ServiceRequestCategorySchema = Type.Union([
+  Type.Literal('TOWELS'),
+  Type.Literal('TOILETRIES'),
+  Type.Literal('HOUSEKEEPING'),
+  Type.Literal('AMENITIES'),
+  Type.Literal('OTHER'),
+]);
+export type ServiceRequestCategory = Static<typeof ServiceRequestCategorySchema>;
+export const GuestServiceRequestCategorySchema = ServiceRequestCategorySchema;
+export type GuestServiceRequestCategory = ServiceRequestCategory;
+
+export const GuestServiceRequestCreateSchema = Type.Object({
+  roomNumber: Type.String({ minLength: 1 }),
+  stayId: Type.String({ minLength: 1 }),
+  category: Type.Optional(ServiceRequestCategorySchema),
+  items: Type.Array(ServiceRequestItemSchema, { minItems: 1 }),
+  notes: Type.Optional(Type.String()),
+  specialInstructions: Type.Optional(Type.String()),
+});
+export type GuestServiceRequestCreate = Static<typeof GuestServiceRequestCreateSchema>;
+
+export const GuestServiceRequestResponseSchema = Type.Object({
+  requestId: Type.String({ minLength: 1 }),
+  status: Type.Union([
+    Type.Literal('RECEIVED'),
+    Type.Literal('ACKNOWLEDGED'),
+    Type.Literal('IN_PROGRESS'),
+    Type.Literal('COMPLETED'),
+    Type.Literal('CANCELLED'),
+  ]),
+  estimatedDeliveryMinutes: Type.Integer({ minimum: 1 }),
+  roomNumber: Type.String({ minLength: 1 }),
+  items: Type.Array(ServiceRequestItemSchema),
+  createdAt: Type.String(),
+});
+export type GuestServiceRequestResponse = Static<typeof GuestServiceRequestResponseSchema>;
 
 /**
  * ============================================================================
