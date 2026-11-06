@@ -209,6 +209,9 @@ export interface KnowledgeArticle {
   updatedBy: string;
 }
 
+  items: MenuItem[];
+}
+
 export interface Payment {
   id: string;
   orderId: string;

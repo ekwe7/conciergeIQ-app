@@ -9,6 +9,9 @@ import { Switch } from '../components/ui/Switch';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../features/auth/AuthProvider';
 import { useTranslatedLanguages } from '../features/hotel/useBranding';
+import { Switch } from '../components/ui/Switch';
+import { useToast } from '../components/ui/Toast';
+import { useAuth } from '../features/auth/AuthProvider';
 import { useHotelLocale } from '../features/hotel/useHotel';
 import {
   useDeleteCategory,
@@ -19,6 +22,7 @@ import {
   useSetAvailability,
 } from '../features/menu/api';
 import { LANGUAGE_NAME, type MenuCategory, type MenuItem, type TranslatedLanguage } from '../lib/api-types';
+import type { MenuCategory, MenuItem } from '../lib/api-types';
 import { describeError } from '../lib/error-handler';
 import { formatCharge } from '../lib/format';
 import { Permission } from '../lib/permissions';
@@ -48,6 +52,8 @@ export function MenuPage() {
   const allItems = categories.flatMap((category) => category.items);
   const nameOf = (itemId: string) => allItems.find((item) => item.id === itemId)?.name;
   const unavailable = allItems.filter((item) => !item.isAvailable).length;
+  const itemCount = categories.reduce((sum, category) => sum + category.items.length, 0);
+  const unavailable = categories.reduce((sum, category) => sum + category.items.filter((item) => !item.isAvailable).length, 0);
 
   const toggle = (item: MenuItem, isAvailable: boolean) =>
     setAvailability.mutate(
@@ -65,6 +71,7 @@ export function MenuPage() {
         description={
           menu.data
             ? `${allItems.length} items in ${categories.length} categories${unavailable ? ` · ${unavailable} unavailable` : ''}`
+            ? `${itemCount} items in ${categories.length} categories${unavailable ? ` · ${unavailable} unavailable` : ''}`
             : 'What guests can order from their room.'
         }
         actions={
@@ -78,6 +85,9 @@ export function MenuPage() {
       />
 
       {!canToggle && <p className="mb-4 text-[13px] text-ink-3">Ask reception or a manager to mark an item unavailable.</p>}
+      {!canToggle && (
+        <p className="mb-4 text-[13px] text-ink-3">Ask reception or a manager to mark an item unavailable.</p>
+      )}
 
       {menu.isPending && <LoadingRows rows={6} label="Loading menu" />}
       {menu.error && !menu.data && (
@@ -111,11 +121,13 @@ export function MenuPage() {
               description={[`${category.items.length} ${category.items.length === 1 ? 'item' : 'items'}`, hoursLabel(category)]
                 .filter(Boolean)
                 .join(' · ')}
+              description={`${category.items.length} ${category.items.length === 1 ? 'item' : 'items'}`}
               actions={
                 canEdit && (
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => setCategoryEditor({ mode: 'edit', category })}>
                       Edit
+                      Rename
                     </Button>
                     <Button size="sm" onClick={() => setItemEditor({ mode: 'new', categoryId: category.id })}>
                       <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -157,6 +169,35 @@ export function MenuPage() {
                     </li>
                   );
                 })}
+                {category.items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-4 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className={item.isAvailable ? 'text-[13px] font-medium text-ink' : 'text-[13px] font-medium text-ink-3'}>
+                        {item.name}
+                        {!item.isAvailable && <span className="ml-2 text-xs font-normal">Unavailable</span>}
+                      </p>
+                      {item.description && <p className="mt-0.5 line-clamp-1 text-xs text-ink-3">{item.description}</p>}
+                    </div>
+                    <span className="tabular w-24 shrink-0 text-right text-[13px] text-ink">{formatCharge(item.price, currency)}</span>
+                    {canToggle && (
+                      <Switch
+                        checked={item.isAvailable}
+                        onChange={(next) => toggle(item, next)}
+                        label={`${item.name} available`}
+                      />
+                    )}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setItemEditor({ mode: 'edit', item })}
+                        aria-label={`Edit ${item.name}`}
+                        className="rounded p-1.5 text-ink-3 hover:bg-sunken hover:text-ink"
+                      >
+                        <Pencil className="h-4 w-4" strokeWidth={1.75} />
+                      </button>
+                    )}
+                  </li>
+                ))}
               </ul>
             )}
           </Panel>
@@ -229,6 +270,12 @@ function ItemDialog({
         .map(([language, text]) => [language, { name: text?.name.trim() ?? '', ...(text?.description?.trim() ? { description: text.description.trim() } : {}) }] as const)
         .filter(([, text]) => text.name),
     );
+  const parsedPrice = Number(price);
+  const priceError =
+    price !== '' && !/^\d{1,8}(\.\d{1,2})?$/.test(price)
+      ? 'Enter an amount with at most two decimal places, e.g. 4500 or 4500.50.'
+      : null;
+  const valid = name.trim() && price !== '' && !priceError && categoryId;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -245,6 +292,7 @@ function ItemDialog({
           pairsWith,
           translations: cleanTranslations(),
         },
+        input: { categoryId, name: name.trim(), description: description.trim() || undefined, price: parsedPrice },
       },
       {
         onSuccess: () => {
@@ -291,6 +339,7 @@ function ItemDialog({
       }
     >
       <form id="menu-item" onSubmit={submit} className="space-y-5">
+      <form id="menu-item" onSubmit={submit} className="space-y-4">
         <Field label="Name">
           <Input value={name} maxLength={120} onChange={(event) => setName(event.target.value)} data-autofocus />
         </Field>
@@ -375,6 +424,9 @@ function ItemDialog({
         )}
 
         {confirmDelete && <p className="text-[13px] text-ink-2">Guests will no longer see this item. Past orders keep their record of it.</p>}
+        {confirmDelete && (
+          <p className="text-[13px] text-ink-2">Guests will no longer see this item. Past orders keep their record of it.</p>
+        )}
         <FormError>{save.error ? describeError(save.error) : remove.error ? describeError(remove.error) : null}</FormError>
       </form>
     </Overlay>
@@ -391,6 +443,19 @@ function CategoryDialog({ editor, nextSortOrder, onClose }: { editor: CategoryEd
   const [from, setFrom] = useState('06:30');
   const [until, setUntil] = useState('11:00');
   const [translations, setTranslations] = useState<MenuCategory['translations']>({});
+function CategoryDialog({
+  editor,
+  nextSortOrder,
+  onClose,
+}: {
+  editor: CategoryEditor | null;
+  nextSortOrder: number;
+  onClose: () => void;
+}) {
+  const save = useSaveCategory();
+  const remove = useDeleteCategory();
+  const toast = useToast();
+  const [name, setName] = useState('');
   const editing = editor?.mode === 'edit' ? editor.category : null;
 
   useEffect(() => {
@@ -427,6 +492,14 @@ function CategoryDialog({ editor, nextSortOrder, onClose }: { editor: CategoryEd
       {
         onSuccess: () => {
           toast.show(editing ? `${name.trim()} saved` : `${name.trim()} added`);
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!name.trim()) return;
+    save.mutate(
+      { categoryId: editing?.id, name: name.trim(), sortOrder: nextSortOrder },
+      {
+        onSuccess: () => {
+          toast.show(editing ? 'Category renamed' : `${name.trim()} added`);
           onClose();
         },
       },
@@ -441,6 +514,8 @@ function CategoryDialog({ editor, nextSortOrder, onClose }: { editor: CategoryEd
       onClose={onClose}
       width="md"
       title={editing ? `Edit ${editing.name}` : 'Add category'}
+      width="sm"
+      title={editing ? 'Rename category' : 'Add category'}
       footer={
         <>
           {canRemove && (
@@ -462,6 +537,7 @@ function CategoryDialog({ editor, nextSortOrder, onClose }: { editor: CategoryEd
           )}
           <Button onClick={onClose}>Cancel</Button>
           <Button variant="primary" type="submit" form="menu-category" pending={save.isPending} disabled={!name.trim() || Boolean(hoursError)}>
+          <Button variant="primary" type="submit" form="menu-category" pending={save.isPending} disabled={!name.trim()}>
             {editing ? 'Save' : 'Add category'}
           </Button>
         </>
@@ -508,6 +584,10 @@ function CategoryDialog({ editor, nextSortOrder, onClose }: { editor: CategoryEd
           </fieldset>
         )}
 
+      <form id="menu-category" onSubmit={submit} className="space-y-4">
+        <Field label="Name" hint={editing && editing.items.length > 0 ? 'Move or remove its items to delete this category.' : undefined}>
+          <Input value={name} maxLength={80} onChange={(event) => setName(event.target.value)} data-autofocus />
+        </Field>
         <FormError>{save.error ? describeError(save.error) : remove.error ? describeError(remove.error) : null}</FormError>
       </form>
     </Overlay>

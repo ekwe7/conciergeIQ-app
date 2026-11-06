@@ -100,6 +100,7 @@ export function RealtimeProvider({ children, createSocket }: { children: ReactNo
       }
     },
     [hotelId, queryClient, toast],
+    [hotelId, queryClient],
   );
 
   useEffect(() => {

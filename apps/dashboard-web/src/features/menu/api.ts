@@ -56,6 +56,10 @@ export const useSaveCategory = () =>
     categoryId
       ? api.patch<MenuCategory>(`/menu/categories/${categoryId}`, fields)
       : api.post<MenuCategory>('/menu/categories', { ...fields, sortOrder }),
+  useMenuMutation(({ categoryId, name, sortOrder }: { categoryId?: string; name: string; sortOrder?: number }) =>
+    categoryId
+      ? api.patch<MenuCategory>(`/menu/categories/${categoryId}`, { name })
+      : api.post<MenuCategory>('/menu/categories', { name, sortOrder }),
   );
 
 export const useDeleteCategory = () =>
