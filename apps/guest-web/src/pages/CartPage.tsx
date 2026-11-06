@@ -174,7 +174,6 @@ export const CartPage: React.FC<CartPageProperties> = ({
   });
 
   const isCheckoutInFlight = placeOrderMutation.isPending;
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
 
   // Use external cart if supplied via props, otherwise connect to Zustand store
   const isExternallyControlled = Boolean(externalCart);
@@ -286,81 +285,6 @@ export const CartPage: React.FC<CartPageProperties> = ({
       payload: orderPayload,
       sessionToken: effectiveSession.token,
     });
-  };
-
-  };
-
-  const handleIncrementLineQuantity = (lineItem: CartLineItem) => {
-    updateQuantity(lineItem.lineIdentifier, lineItem.quantity + 1);
-  };
-
-  const handleDecrementLineQuantity = (lineItem: CartLineItem) => {
-    if (lineItem.quantity <= 1) {
-      removeItem(lineItem.lineIdentifier);
-      return;
-    }
-    updateQuantity(lineItem.lineIdentifier, lineItem.quantity - 1);
-  };
-
-  const handleStartEditingNote = (lineItem: CartLineItem) => {
-    setEditingLineIdentifier(lineItem.lineIdentifier);
-    setDraftNoteValue(lineItem.specialInstructions || '');
-  };
-
-  const handleSaveNote = (lineIdentifier: string) => {
-    updateSpecialInstructions(lineIdentifier, draftNoteValue);
-    setEditingLineIdentifier(null);
-    setDraftNoteValue('');
-  };
-
-  const handleCancelEditingNote = () => {
-    setEditingLineIdentifier(null);
-    setDraftNoteValue('');
-  };
-
-  const handleCheckoutSubmit = () => {
-    if (onPlaceOrder) {
-      onPlaceOrder();
-      return;
-    }
-
-    setIsSubmittingOrder(true);
-
-    setTimeout(() => {
-      const placedOrder: Order = {
-        id: `ord_${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-        roomNumber: effectiveSession.roomNumber,
-        stayId: effectiveSession.stayId,
-        hotelId: effectiveSession.hotelId,
-        status: 'PENDING',
-        items: displayLineItems.map((lineEntry) => ({
-          itemId: lineEntry.item.id,
-          name: lineEntry.item.name,
-          quantity: lineEntry.quantity,
-          unitPriceMinor: lineEntry.item.priceMinor,
-          totalMinor: lineEntry.item.priceMinor * lineEntry.quantity,
-          specialInstructions: lineEntry.specialInstructions,
-        })),
-        subtotalMinor: subtotalMinorUnits,
-        taxMinor: estimatedTaxMinorUnits,
-        totalMinor: estimatedTotalMinorUnits,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      setIsSubmittingOrder(false);
-      clearStoreCart();
-
-      if (onClearCart) {
-        onClearCart();
-      }
-
-      if (onOrderSuccess) {
-        onOrderSuccess(placedOrder);
-      } else {
-        navigate(`/orders/${placedOrder.id}`);
-      }
-    }, 500);
   };
 
   // 1. Empty Cart State
@@ -690,16 +614,6 @@ export const CartPage: React.FC<CartPageProperties> = ({
           ) : (
             <span>Place order &bull; {formattedEstimatedTotal}</span>
           )}
-          disabled={isSubmittingOrder}
-          onClick={handleCheckoutSubmit}
-          data-testid="place-order-checkout-button"
-          className="w-full py-3.5 px-4 rounded-2xl bg-brand hover:bg-brand-strong text-white font-bold text-sm flex items-center justify-center gap-2 shadow-elevation-mid active:scale-[0.99] transition-all disabled:opacity-50 disabled:pointer-events-none"
-        >
-          <span>
-            {isSubmittingOrder
-              ? 'Submitting order...'
-              : `Place order &bull; ${formattedEstimatedTotal}`}
-          </span>
         </button>
       </footer>
     </div>
