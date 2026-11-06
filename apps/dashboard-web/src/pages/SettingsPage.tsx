@@ -65,7 +65,6 @@ export function SettingsPage() {
     <>
       <PageHeader title="Hotel settings" description="How the hotel appears to guests and how times and prices are shown." />
       <Panel className="mb-6 max-w-2xl">
-      <Panel className="max-w-2xl">
         {hotel.isPending && <LoadingRows rows={4} />}
         {hotel.error && <ErrorState message={describeError(hotel.error)} onRetry={() => void hotel.refetch()} />}
         {hotel.data && (
