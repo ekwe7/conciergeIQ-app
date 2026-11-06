@@ -5,6 +5,9 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse, delay } from 'msw';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { CartPage } from '../src/pages/CartPage';
 import { useCartStore } from '../src/features/cart/store';
 import { GuestMenuItem } from '../src/features/menu/types';
@@ -69,6 +72,14 @@ describe('CartPage Component Suite', () => {
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>
+    return render(
+      <MemoryRouter initialEntries={['/cart']}>
+        <Routes>
+          <Route path="/cart" element={<CartPage {...properties} />} />
+          <Route path="/menu" element={<div data-testid="mock-menu-page">Menu Page</div>} />
+          <Route path="/orders/:orderId" element={<div data-testid="mock-order-tracking-page">Tracking Page</div>} />
+        </Routes>
+      </MemoryRouter>
     );
   }
 
@@ -101,6 +112,7 @@ describe('CartPage Component Suite', () => {
     expect(screen.getByText('Room 101')).toBeDefined();
 
     // Verify financial breakdown
+    // Subtotal: (8,500 * 2) + 9,200 = 26,200
     expect(screen.getByText('Subtotal')).toBeDefined();
     expect(screen.getByText('Service charge (10%)')).toBeDefined();
     expect(screen.getByText('VAT (7.5%)')).toBeDefined();
@@ -138,6 +150,7 @@ describe('CartPage Component Suite', () => {
     expect(useCartStore.getState().lineItems[0].quantity).toBe(1);
 
     // Decrement from 1 to 0 (auto-removal)
+    // Decrement from 1 to 0 -> line item removed, cart becomes empty!
     fireEvent.click(decreaseButton);
     expect(useCartStore.getState().lineItems.length).toBe(0);
     expect(screen.getByTestId('cart-empty-view')).toBeDefined();
@@ -206,6 +219,7 @@ describe('CartPage Component Suite', () => {
       })
     );
 
+  it('places order and navigates to order confirmation upon submission', async () => {
     useCartStore.getState().addItem(sampleDishA, 1);
 
     const handleOrderSuccess = vi.fn();
@@ -316,5 +330,7 @@ describe('CartPage Component Suite', () => {
 
     // Rapid double-clicks triggered only 1 network request
     expect(networkRequestTriggerCount).toBe(1);
+  });
+    expect(useCartStore.getState().lineItems.length).toBe(0);
   });
 });
