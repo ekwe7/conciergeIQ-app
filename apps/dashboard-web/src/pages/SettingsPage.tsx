@@ -6,6 +6,7 @@ import { ErrorState, LoadingRows, PageHeader, Panel } from '../components/ui/Pag
 import { useToast } from '../components/ui/Toast';
 import { useCurrentUser } from '../features/auth/AuthProvider';
 import { useHotel } from '../features/hotel/useHotel';
+import { BrandingPanel } from '../features/settings/BrandingPanel';
 import { api } from '../lib/api-client';
 import type { Hotel } from '../lib/api-types';
 import { describeError } from '../lib/error-handler';
@@ -63,7 +64,7 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Hotel settings" description="How the hotel appears to guests and how times and prices are shown." />
-      <Panel className="max-w-2xl">
+      <Panel className="mb-6 max-w-2xl">
         {hotel.isPending && <LoadingRows rows={4} />}
         {hotel.error && <ErrorState message={describeError(hotel.error)} onRetry={() => void hotel.refetch()} />}
         {hotel.data && (
@@ -115,6 +116,7 @@ export function SettingsPage() {
           </form>
         )}
       </Panel>
+      <BrandingPanel />
     </>
   );
 }

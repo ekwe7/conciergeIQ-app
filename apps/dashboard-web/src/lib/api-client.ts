@@ -70,6 +70,7 @@ export const api = {
     withRefresh(() => http.post<T>(path, body, options)),
   patch: <T>(path: string, body?: unknown, options?: ApiRequestOptions) =>
     withRefresh(() => http.patch<T>(path, body, options)),
+  put: <T>(path: string, body?: unknown, options?: ApiRequestOptions) => withRefresh(() => http.put<T>(path, body, options)),
   delete: <T>(path: string, options?: ApiRequestOptions) => withRefresh(() => http.delete<T>(path, options)),
   getBlob: (path: string, options?: ApiRequestOptions) => withRefresh(() => http.getBlob(path, options)),
   /** Sign-in and sign-out never retry with a refreshed token. */

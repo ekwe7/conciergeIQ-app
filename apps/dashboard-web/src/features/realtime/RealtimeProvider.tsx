@@ -7,6 +7,8 @@ import { queryKeys } from '../../lib/query-keys';
 import { session } from '../../lib/session';
 import { playNewOrderChime, unlockSound } from '../../lib/sound';
 import { StaffSocket, type ConnectionState } from '../../lib/websocket-client';
+import { useToast } from '../../components/ui/Toast';
+import { formatDuration } from '../../lib/format';
 import { useAuth, useCurrentUser } from '../auth/AuthProvider';
 
 export interface NewOrderNotice {
@@ -44,6 +46,7 @@ export function RealtimeProvider({ children, createSocket }: { children: ReactNo
   const { hotelId } = useCurrentUser();
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [soundOn, setSoundOnState] = useState(readSoundPreference);
   const [latestOrder, setLatestOrder] = useState<NewOrderNotice | null>(null);
@@ -80,6 +83,15 @@ export function RealtimeProvider({ children, createSocket }: { children: ReactNo
         case 'ITEM_AVAILABILITY_CHANGED':
           invalidate(queryKeys.menu(hotelId));
           break;
+        case 'ORDER_ESCALATED': {
+          invalidate(queryKeys.escalations(hotelId));
+          const who = message.payload.level === 1 ? 'manager' : 'admin';
+          toast.show(
+            `Room ${message.payload.roomNumber} has waited ${formatDuration(message.payload.waitedSeconds * 1000)}. ` +
+              `${message.payload.recipientName} (${who}) was texted.`,
+          );
+          break;
+        }
         case 'SESSION_REVOKED':
           void signOutRef.current('Your account was deactivated. Ask a manager if this is a mistake.');
           break;
@@ -87,7 +99,7 @@ export function RealtimeProvider({ children, createSocket }: { children: ReactNo
           break;
       }
     },
-    [hotelId, queryClient],
+    [hotelId, queryClient, toast],
   );
 
   useEffect(() => {
