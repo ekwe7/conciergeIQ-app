@@ -12,6 +12,7 @@ import {
   StaffWSMessageSchema,
   CreateOrderRequestSchema,
   UpdateOrderStatusRequestSchema,
+  GuestServiceRequestCreateSchema,
 } from '../src/index';
 
 describe('Contracts Package - TypeBox Runtime Schemas and Branded Types', () => {
@@ -153,5 +154,29 @@ describe('Contracts Package - TypeBox Runtime Schemas and Branded Types', () => 
       timestamp: Date.now(),
     };
     expect(Value.Check(StaffWSMessageSchema, validStaffSocketMessage)).toBe(true);
+  });
+
+  it('validates GuestServiceRequestCreateSchema payloads', () => {
+    const validGuestServiceRequest = {
+      roomNumber: '402',
+      stayId: 'stay_demo_9921',
+      category: 'TOWELS' as const,
+      items: [
+        {
+          itemId: 'amenity_extra_towels',
+          name: 'Extra towels',
+          quantity: 2,
+        },
+      ],
+      specialInstructions: 'Please leave outside door',
+    };
+    expect(Value.Check(GuestServiceRequestCreateSchema, validGuestServiceRequest)).toBe(true);
+
+    const invalidEmptyItemsServiceRequest = {
+      roomNumber: '402',
+      stayId: 'stay_demo_9921',
+      items: [],
+    };
+    expect(Value.Check(GuestServiceRequestCreateSchema, invalidEmptyItemsServiceRequest)).toBe(false);
   });
 });

@@ -12,6 +12,7 @@ import { CheckoutPage } from '../pages/CheckoutPage';
 import { OrdersHistoryPage } from '../pages/OrdersHistoryPage';
 import { OrderTrackingPage } from '../pages/OrderTrackingPage';
 import { FolioBillPage } from '../pages/FolioBillPage';
+import { AmenitiesPage } from '../pages/AmenitiesPage';
 import { ErrorRecoveryPage } from '../pages/ErrorRecoveryPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
@@ -48,6 +49,10 @@ export const applicationRoutes: RouteObject[] = [
       {
         path: 'orders/:orderId',
         element: <OrderTrackingPage />,
+      },
+      {
+        path: 'amenities',
+        element: <AmenitiesPage />,
       },
       {
         path: 'bill',
