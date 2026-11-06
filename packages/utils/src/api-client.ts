@@ -31,6 +31,11 @@ export interface ApiClient {
     requestBody?: RequestBodyType,
     options?: ApiRequestOptions
   ): Promise<ResponseType>;
+  put<ResponseType, RequestBodyType = unknown>(
+    endpointPath: string,
+    requestBody?: RequestBodyType,
+    options?: ApiRequestOptions
+  ): Promise<ResponseType>;
   delete<ResponseType>(endpointPath: string, options?: ApiRequestOptions): Promise<ResponseType>;
   getBlob(endpointPath: string, options?: ApiRequestOptions): Promise<Blob>;
 }
@@ -44,7 +49,7 @@ export function createApiClient(configuration: ApiClientConfiguration): ApiClien
   const defaultTimeoutMilliseconds = configuration.timeoutMilliseconds ?? 15000;
 
   async function executeRequest(
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     endpointPath: string,
     requestBody?: unknown,
     options?: ApiRequestOptions,
@@ -178,6 +183,14 @@ export function createApiClient(configuration: ApiClientConfiguration): ApiClien
       options?: ApiRequestOptions
     ): Promise<ResponseType> {
       return (await executeRequest('PATCH', endpointPath, requestBody, options, false)) as ResponseType;
+    },
+
+    async put<ResponseType, RequestBodyType = unknown>(
+      endpointPath: string,
+      requestBody?: RequestBodyType,
+      options?: ApiRequestOptions
+    ): Promise<ResponseType> {
+      return (await executeRequest('PUT', endpointPath, requestBody, options, false)) as ResponseType;
     },
 
     async delete<ResponseType>(endpointPath: string, options?: ApiRequestOptions): Promise<ResponseType> {

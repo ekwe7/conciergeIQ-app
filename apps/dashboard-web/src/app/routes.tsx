@@ -4,6 +4,8 @@ import { RequireAuth, RequirePermission } from '../components/layout/Guards';
 import { RealtimeProvider } from '../features/realtime/RealtimeProvider';
 import { Permission } from '../lib/permissions';
 import { ActivityPage } from '../pages/ActivityPage';
+import { ConciergePage } from '../pages/ConciergePage';
+import { EscalationsPage } from '../pages/EscalationsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { MenuPage } from '../pages/MenuPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -37,6 +39,8 @@ export const routes: RouteObject[] = [
       { path: 'qr-codes', element: guarded(Permission.MANAGE_ROOMS_AND_QR_CODES, <QrCodesPage />) },
       { path: 'staff', element: guarded(Permission.MANAGE_STAFF, <StaffPage />) },
       { path: 'activity', element: guarded(Permission.VIEW_ACTIVITY_LOG, <ActivityPage />) },
+      { path: 'escalations', element: guarded(Permission.VIEW_ACTIVITY_LOG, <EscalationsPage />) },
+      { path: 'concierge', element: guarded(Permission.MANAGE_CONCIERGE_CONTENT, <ConciergePage />) },
       { path: 'settings', element: guarded(Permission.MANAGE_HOTEL_SETTINGS, <SettingsPage />) },
       { path: '*', element: <NotFoundPage /> },
     ],

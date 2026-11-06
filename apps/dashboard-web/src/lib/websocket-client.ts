@@ -120,6 +120,7 @@ const KNOWN_TYPES = new Set<StaffSocketMessage['type']>([
   'PAYMENT_RECORDED',
   'ITEM_AVAILABILITY_CHANGED',
   'SESSION_REVOKED',
+  'ORDER_ESCALATED',
 ]);
 
 /** Ignores anything that is not a well-formed message the dashboard knows. */
