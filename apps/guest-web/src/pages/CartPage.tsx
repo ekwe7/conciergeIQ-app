@@ -11,11 +11,19 @@ import {
   MessageSquare,
   Edit2,
   Check,
+  AlertCircle,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { CartItem, GuestSession, Order } from '@conciergeiq/contracts';
 import { useCartStore, CartLineItem, calculateCartTotals } from '../features/cart';
 import { retrieveGuestSession } from '../features/guest-session';
 import { formatCurrencyAmount } from '../features/menu/types';
+import {
+  usePlaceOrder,
+  mapCartLinesToOrderPayload,
+  PlacedOrderResponse,
+} from '../features/orders';
 
 export interface CartPageProperties {
   onBack?: () => void;
@@ -114,7 +122,58 @@ export const CartPage: React.FC<CartPageProperties> = ({
   // Note editing state: maps lineIdentifier -> boolean or draft string
   const [editingLineIdentifier, setEditingLineIdentifier] = useState<string | null>(null);
   const [draftNoteValue, setDraftNoteValue] = useState<string>('');
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
+  const [submissionErrorMessage, setSubmissionErrorMessage] = useState<string | null>(null);
+
+  // TanStack Query Order Placement Mutation
+  const placeOrderMutation = usePlaceOrder({
+    onSuccessCallback: (placedOrderResponse: PlacedOrderResponse) => {
+      // Clear cart ONLY upon successful server creation (HTTP 201)
+      clearStoreCart();
+
+      if (onClearCart) {
+        onClearCart();
+      }
+
+      const resolvedOrderId =
+        placedOrderResponse.id || placedOrderResponse.order?.id || 'order_created';
+
+      if (onOrderSuccess) {
+        const synthesizedOrder: Order = placedOrderResponse.order ?? {
+          id: resolvedOrderId,
+          roomNumber: effectiveSession.roomNumber,
+          stayId: effectiveSession.stayId,
+          hotelId: effectiveSession.hotelId,
+          status: 'PENDING',
+          items: displayLineItems.map((lineEntry) => ({
+            itemId: lineEntry.item.id,
+            name: lineEntry.item.name,
+            quantity: lineEntry.quantity,
+            unitPriceMinor: lineEntry.item.priceMinor,
+            totalMinor: lineEntry.item.priceMinor * lineEntry.quantity,
+            specialInstructions: lineEntry.specialInstructions,
+          })),
+          subtotalMinor: subtotalMinorUnits,
+          taxMinor: estimatedTaxMinorUnits,
+          totalMinor: estimatedTotalMinorUnits,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        onOrderSuccess(synthesizedOrder);
+      } else {
+        navigate(`/orders/${resolvedOrderId}`);
+      }
+    },
+    onErrorCallback: (caughtError: Error) => {
+      // Display user-friendly error toast and keep cart items intact
+      const userFacingErrorMessage =
+        caughtError.message && caughtError.message.trim().length > 0
+          ? caughtError.message
+          : 'Unable to submit your room dining order. Please verify your items and try again.';
+      setSubmissionErrorMessage(userFacingErrorMessage);
+    },
+  });
+
+  const isCheckoutInFlight = placeOrderMutation.isPending;
 
   // Use external cart if supplied via props, otherwise connect to Zustand store
   const isExternallyControlled = Boolean(externalCart);
@@ -205,48 +264,27 @@ export const CartPage: React.FC<CartPageProperties> = ({
   };
 
   const handleCheckoutSubmit = () => {
+    if (isCheckoutInFlight || displayLineItems.length === 0) {
+      return;
+    }
+
+    setSubmissionErrorMessage(null);
+
     if (onPlaceOrder) {
       onPlaceOrder();
       return;
     }
 
-    setIsSubmittingOrder(true);
+    const orderPayload = mapCartLinesToOrderPayload(
+      effectiveSession.roomNumber,
+      effectiveSession.stayId,
+      displayLineItems
+    );
 
-    setTimeout(() => {
-      const placedOrder: Order = {
-        id: `ord_${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-        roomNumber: effectiveSession.roomNumber,
-        stayId: effectiveSession.stayId,
-        hotelId: effectiveSession.hotelId,
-        status: 'PENDING',
-        items: displayLineItems.map((lineEntry) => ({
-          itemId: lineEntry.item.id,
-          name: lineEntry.item.name,
-          quantity: lineEntry.quantity,
-          unitPriceMinor: lineEntry.item.priceMinor,
-          totalMinor: lineEntry.item.priceMinor * lineEntry.quantity,
-          specialInstructions: lineEntry.specialInstructions,
-        })),
-        subtotalMinor: subtotalMinorUnits,
-        taxMinor: estimatedTaxMinorUnits,
-        totalMinor: estimatedTotalMinorUnits,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      setIsSubmittingOrder(false);
-      clearStoreCart();
-
-      if (onClearCart) {
-        onClearCart();
-      }
-
-      if (onOrderSuccess) {
-        onOrderSuccess(placedOrder);
-      } else {
-        navigate(`/orders/${placedOrder.id}`);
-      }
-    }, 500);
+    placeOrderMutation.mutate({
+      payload: orderPayload,
+      sessionToken: effectiveSession.token,
+    });
   };
 
   // 1. Empty Cart State
@@ -532,20 +570,50 @@ export const CartPage: React.FC<CartPageProperties> = ({
         </section>
       </main>
 
+      {/* User-friendly Error Toast Notification */}
+      {submissionErrorMessage && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          data-testid="order-submission-error-toast"
+          className="fixed top-4 left-4 right-4 max-w-md mx-auto z-50 bg-rose-50 border border-rose-300 text-rose-900 rounded-2xl p-4 shadow-elevation-high flex items-start gap-3"
+        >
+          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xs font-bold text-rose-950">Order Submission Failed</h4>
+            <p className="text-xs text-rose-800 mt-0.5 leading-relaxed">
+              {submissionErrorMessage}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Dismiss error notification"
+            onClick={() => setSubmissionErrorMessage(null)}
+            className="p-1 text-rose-700 hover:text-rose-950 rounded-lg hover:bg-rose-100 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Fixed Sticky Action Footer (UI: G04) */}
       <footer className="fixed bottom-0 left-0 right-0 p-3.5 bg-surface/95 backdrop-blur-md border-t border-border shadow-elevation-high max-w-md mx-auto z-30 pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))]">
         <button
           type="button"
-          disabled={isSubmittingOrder}
+          disabled={isCheckoutInFlight}
           onClick={handleCheckoutSubmit}
           data-testid="place-order-checkout-button"
+          aria-busy={isCheckoutInFlight}
           className="w-full py-3.5 px-4 rounded-2xl bg-brand hover:bg-brand-strong text-white font-bold text-sm flex items-center justify-center gap-2 shadow-elevation-mid active:scale-[0.99] transition-all disabled:opacity-50 disabled:pointer-events-none"
         >
-          <span>
-            {isSubmittingOrder
-              ? 'Submitting order...'
-              : `Place order &bull; ${formattedEstimatedTotal}`}
-          </span>
+          {isCheckoutInFlight ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              <span>Submitting order...</span>
+            </>
+          ) : (
+            <span>Place order &bull; {formattedEstimatedTotal}</span>
+          )}
         </button>
       </footer>
     </div>

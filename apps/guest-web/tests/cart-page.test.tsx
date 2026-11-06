@@ -1,10 +1,30 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { setupServer } from 'msw/node';
+import { http, HttpResponse, delay } from 'msw';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CartPage } from '../src/pages/CartPage';
 import { useCartStore } from '../src/features/cart/store';
 import { GuestMenuItem } from '../src/features/menu/types';
+
+const orderEndpointPattern = new RegExp('/api/v1/guest/orders$');
+
+const mockServer = setupServer();
+
+beforeAll(() => {
+  mockServer.listen({ onUnhandledRequest: 'bypass' });
+});
+
+afterEach(() => {
+  mockServer.resetHandlers();
+  vi.restoreAllMocks();
+});
+
+afterAll(() => {
+  mockServer.close();
+});
 
 describe('CartPage Component Suite', () => {
   const sampleDishA: GuestMenuItem = {
@@ -32,14 +52,23 @@ describe('CartPage Component Suite', () => {
   });
 
   function renderCartPage(properties: React.ComponentProps<typeof CartPage> = {}) {
+    const testQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
     return render(
-      <MemoryRouter initialEntries={['/cart']}>
-        <Routes>
-          <Route path="/cart" element={<CartPage {...properties} />} />
-          <Route path="/menu" element={<div data-testid="mock-menu-page">Menu Page</div>} />
-          <Route path="/orders/:orderId" element={<div data-testid="mock-order-tracking-page">Tracking Page</div>} />
-        </Routes>
-      </MemoryRouter>
+      <QueryClientProvider client={testQueryClient}>
+        <MemoryRouter initialEntries={['/cart']}>
+          <Routes>
+            <Route path="/cart" element={<CartPage {...properties} />} />
+            <Route path="/menu" element={<div data-testid="mock-menu-page">Menu Page</div>} />
+            <Route path="/orders/:orderId" element={<div data-testid="mock-order-tracking-page">Tracking Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
   }
 
@@ -72,7 +101,6 @@ describe('CartPage Component Suite', () => {
     expect(screen.getByText('Room 101')).toBeDefined();
 
     // Verify financial breakdown
-    // Subtotal: (8,500 * 2) + 9,200 = 26,200
     expect(screen.getByText('Subtotal')).toBeDefined();
     expect(screen.getByText('Service charge (10%)')).toBeDefined();
     expect(screen.getByText('VAT (7.5%)')).toBeDefined();
@@ -109,7 +137,7 @@ describe('CartPage Component Suite', () => {
     fireEvent.click(decreaseButton);
     expect(useCartStore.getState().lineItems[0].quantity).toBe(1);
 
-    // Decrement from 1 to 0 -> line item removed, cart becomes empty!
+    // Decrement from 1 to 0 (auto-removal)
     fireEvent.click(decreaseButton);
     expect(useCartStore.getState().lineItems.length).toBe(0);
     expect(screen.getByTestId('cart-empty-view')).toBeDefined();
@@ -163,7 +191,21 @@ describe('CartPage Component Suite', () => {
     expect(screen.getByTestId('cart-empty-view')).toBeDefined();
   });
 
-  it('places order and navigates to order confirmation upon submission', async () => {
+  it('submits order successfully, clears cart store, and routes to order confirmation upon 201 Created', async () => {
+    mockServer.use(
+      http.post(orderEndpointPattern, () => {
+        return HttpResponse.json(
+          {
+            id: 'ord_SUBMIT_SUCCESS_88',
+            roomNumber: '101',
+            stayId: 'stay_test_101',
+            status: 'PENDING',
+          },
+          { status: 201 }
+        );
+      })
+    );
+
     useCartStore.getState().addItem(sampleDishA, 1);
 
     const handleOrderSuccess = vi.fn();
@@ -179,6 +221,100 @@ describe('CartPage Component Suite', () => {
       expect(handleOrderSuccess).toHaveBeenCalledTimes(1);
     });
 
+    expect(handleOrderSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ord_SUBMIT_SUCCESS_88',
+      })
+    );
     expect(useCartStore.getState().lineItems.length).toBe(0);
+  });
+
+  it('retains cart line items intact and displays user-friendly error toast when order placement fails', async () => {
+    mockServer.use(
+      http.post(orderEndpointPattern, () => {
+        return HttpResponse.json(
+          {
+            title: 'Item Unavailable',
+            detail: 'Item Jollof rice is currently out of stock in the kitchen',
+            status: 409,
+          },
+          { status: 409 }
+        );
+      })
+    );
+
+    useCartStore.getState().addItem(sampleDishA, 2, 'Mild spice');
+
+    renderCartPage();
+
+    const placeOrderButton = screen.getByTestId('place-order-checkout-button');
+    fireEvent.click(placeOrderButton);
+
+    // Wait for error toast to appear
+    await waitFor(() => {
+      expect(screen.getByTestId('order-submission-error-toast')).toBeDefined();
+    });
+
+    expect(
+      screen.getByText(/Item Jollof rice is currently out of stock in the kitchen/i)
+    ).toBeDefined();
+
+    // Contributor guidance: Cart store MUST remain intact upon error
+    expect(useCartStore.getState().lineItems.length).toBe(1);
+    expect(useCartStore.getState().lineItems[0].quantity).toBe(2);
+
+    // Test dismissal of error toast
+    const dismissButton = screen.getByRole('button', {
+      name: /dismiss error notification/i,
+    });
+    fireEvent.click(dismissButton);
+
+    expect(screen.queryByTestId('order-submission-error-toast')).toBeNull();
+    // Cart is still intact
+    expect(useCartStore.getState().lineItems.length).toBe(1);
+  });
+
+  it('disables place order button and shows loading spinner during in-flight submission', async () => {
+    let networkRequestTriggerCount = 0;
+
+    mockServer.use(
+      http.post(orderEndpointPattern, async () => {
+        networkRequestTriggerCount += 1;
+        await delay(200);
+        return HttpResponse.json(
+          {
+            id: 'ord_DELAYED_123',
+            status: 'PENDING',
+          },
+          { status: 201 }
+        );
+      })
+    );
+
+    useCartStore.getState().addItem(sampleDishA, 1);
+
+    renderCartPage();
+
+    const placeOrderButton = screen.getByTestId('place-order-checkout-button');
+
+    // First click triggers submission
+    fireEvent.click(placeOrderButton);
+
+    // Verify button is disabled and enters loading state
+    await waitFor(() => {
+      expect(placeOrderButton.getAttribute('disabled')).not.toBeNull();
+      expect(placeOrderButton.getAttribute('aria-busy')).toBe('true');
+      expect(screen.getByText('Submitting order...')).toBeDefined();
+    });
+
+    // Rapid second click
+    fireEvent.click(placeOrderButton);
+
+    await waitFor(() => {
+      expect(useCartStore.getState().lineItems.length).toBe(0);
+    });
+
+    // Rapid double-clicks triggered only 1 network request
+    expect(networkRequestTriggerCount).toBe(1);
   });
 });
