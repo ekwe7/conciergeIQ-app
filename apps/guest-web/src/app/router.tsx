@@ -9,9 +9,9 @@ import { WelcomePage } from '../pages/WelcomePage';
 import { MenuPage } from '../pages/MenuPage';
 import { CartPage } from '../pages/CartPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
-import { OrdersHistoryPage } from '../pages/OrdersHistoryPage';
+import { OrderHistoryPage } from '../pages/OrderHistoryPage';
 import { OrderTrackingPage } from '../pages/OrderTrackingPage';
-import { FolioBillPage } from '../pages/FolioBillPage';
+import { DigitalBillPage } from '../pages/DigitalBillPage';
 import { AmenitiesPage } from '../pages/AmenitiesPage';
 import { ErrorRecoveryPage } from '../pages/ErrorRecoveryPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -44,7 +44,7 @@ export const applicationRoutes: RouteObject[] = [
       },
       {
         path: 'orders',
-        element: <OrdersHistoryPage />,
+        element: <OrderHistoryPage />,
       },
       {
         path: 'orders/:orderId',
@@ -56,7 +56,7 @@ export const applicationRoutes: RouteObject[] = [
       },
       {
         path: 'bill',
-        element: <FolioBillPage />,
+        element: <DigitalBillPage />,
       },
       {
         path: 'error',

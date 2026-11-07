@@ -26,7 +26,7 @@ export const BottomNavigation: React.FC = () => {
     <nav
       aria-label="Guest Mobile Navigation"
       data-testid="guest-bottom-navigation"
-      className="sticky bottom-0 z-30 w-full bg-surface/95 backdrop-blur-md border-t border-border padding-bottom-safe-area shadow-elevation-mid transition-colors"
+      className="sticky bottom-0 z-30 w-full bg-surface/95 backdrop-blur-md border-t border-border padding-bottom-safe-area shadow-elevation-mid transition-colors print:hidden"
     >
       <div className="grid grid-cols-5 h-16 max-w-md mx-auto items-center px-1">
         {NAVIGATION_ITEMS.map((navigationItem) => {
