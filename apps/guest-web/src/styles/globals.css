@@ -61,3 +61,41 @@
   }
 }
 
+
+/* Toast notifications: slide-in entrance and 4-second countdown bar. */
+@keyframes toast-enter-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-countdown-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.toast-enter {
+  /* `backwards` (not `both`) so the inline swipe transform is not overridden after entry. */
+  animation: toast-enter-slide-down 220ms ease-out backwards;
+}
+
+.toast-countdown {
+  animation-name: toast-countdown-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter {
+    animation: none;
+  }
+}
