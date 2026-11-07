@@ -2,6 +2,7 @@ import React from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { ApplicationProviders } from './app/providers';
 import { createApplicationRouter, applicationRouter } from './app/router';
+import { ErrorBoundary } from './components/feedback';
 
 export interface ApplicationProperties {
   initialEntries?: string[];
@@ -28,9 +29,11 @@ export const App: React.FC<ApplicationProperties> = ({
   }, [customRouter, initialEntries]);
 
   return (
-    <ApplicationProviders>
-      <RouterProvider router={routerInstance} />
-    </ApplicationProviders>
+    <ErrorBoundary>
+      <ApplicationProviders>
+        <RouterProvider router={routerInstance} />
+      </ApplicationProviders>
+    </ErrorBoundary>
   );
 };
 
