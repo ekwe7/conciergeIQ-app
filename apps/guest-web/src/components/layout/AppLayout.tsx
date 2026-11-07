@@ -3,7 +3,11 @@ import { Outlet } from 'react-router-dom';
 import { PageContainer } from './PageContainer';
 import { MobileHeader } from './MobileHeader';
 import { BottomNavigation } from './BottomNavigation';
-import { ToastContainer, BackgroundOrderNotificationListener } from '../feedback';
+import {
+  ToastContainer,
+  BackgroundOrderNotificationListener,
+  OfflineBanner,
+} from '../feedback';
 
 export interface AppLayoutProperties {
   hotelTitle?: string;
@@ -23,6 +27,7 @@ export const AppLayout: React.FC<AppLayoutProperties> = ({
 }) => {
   return (
     <PageContainer>
+      <OfflineBanner />
       <ToastContainer />
       <BackgroundOrderNotificationListener />
       <MobileHeader
