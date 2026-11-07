@@ -12,6 +12,7 @@ import { CheckoutPage } from '../pages/CheckoutPage';
 import { OrderHistoryPage } from '../pages/OrderHistoryPage';
 import { OrderTrackingPage } from '../pages/OrderTrackingPage';
 import { DigitalBillPage } from '../pages/DigitalBillPage';
+import { FolioBillPage } from '../pages/FolioBillPage';
 import { AmenitiesPage } from '../pages/AmenitiesPage';
 import { ErrorRecoveryPage } from '../pages/ErrorRecoveryPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
