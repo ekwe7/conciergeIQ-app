@@ -21,7 +21,7 @@ describe('signing in', () => {
     });
 
     renderDashboard('/orders');
-    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Staff sign in' })).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'amaka@azurebay.test' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
