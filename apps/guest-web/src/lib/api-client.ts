@@ -1,5 +1,8 @@
 import { AppApiError, normalizeApiError } from './error-handler';
-import { retrieveGuestSession } from '../features/guest-session/session-store';
+import {
+  retrieveGuestSession,
+  clearGuestSession,
+} from '../features/guest-session/session-store';
 
 export interface ApiClientConfiguration {
   baseURL: string;
@@ -107,6 +110,22 @@ export function createApiClient(configuration: ApiClientConfiguration): ApiClien
           }
         } catch {
           errorPayload = null;
+        }
+
+        if (response.status === 401) {
+          clearGuestSession();
+          if (
+            typeof window !== 'undefined' &&
+            window.location &&
+            typeof window.location.assign === 'function' &&
+            !window.location.pathname.startsWith('/error')
+          ) {
+            try {
+              window.location.assign('/error?reason=session_expired');
+            } catch {
+              // Ignore navigation rejection in test runners or unsupported environments
+            }
+          }
         }
 
         throw normalizeApiError(

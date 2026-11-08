@@ -98,9 +98,9 @@ describe('Guest Web Application Suite', () => {
     const folioBillNavigationLink = screen.getByText('Folio Bill');
     fireEvent.click(folioBillNavigationLink);
 
-    // Verify Room Folio Bill page rendered
-    expect(screen.getByText('Room Folio Bill')).toBeDefined();
-    expect(screen.getByText('Current Outstanding Balance')).toBeDefined();
+    // Verify Folio Bill page rendered
+    expect(screen.getByRole('heading', { name: 'No Active Stay' })).toBeDefined();
+    expect(screen.getByText(/Scan the QR code in your room to view your folio bill/i)).toBeDefined();
   });
 
   it('renders error recovery page on /error route with scan QR code guidance', () => {

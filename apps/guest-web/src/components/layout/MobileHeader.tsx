@@ -23,7 +23,7 @@ export const MobileHeader: React.FC<MobileHeaderProperties> = ({
   return (
     <header
       data-testid="guest-mobile-header"
-      className="sticky top-0 z-30 w-full bg-surface/95 backdrop-blur-md border-b border-border shadow-elevation-low padding-top-safe-area transition-colors"
+      className="sticky top-0 z-30 w-full bg-surface/95 backdrop-blur-md border-b border-border shadow-elevation-low padding-top-safe-area transition-colors print:hidden"
     >
       <div className="px-4 py-3 flex items-center justify-between gap-3">
         {/* Hotel Identity */}
