@@ -6,6 +6,7 @@ import {
 } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
+import { RequireAuth, RequirePermission } from '../components/layout/Guards';
 import { RealtimeProvider } from '../features/realtime/RealtimeProvider';
 import { Permission } from '../lib/permissions';
 import { ActivityPage } from '../pages/ActivityPage';
@@ -29,6 +30,13 @@ const wrapWithProtectedRoute = (
   <ProtectedRoute permission={requiredPermission}>
     {pageElement}
   </ProtectedRoute>
+const wrapWithPermissionGuard = (
+  requiredPermission: Permission,
+  pageElement: JSX.Element,
+) => (
+  <RequirePermission permission={requiredPermission}>
+    {pageElement}
+  </RequirePermission>
 );
 
 export interface ApplicationRouterConfigurationOptions {
@@ -48,6 +56,11 @@ export const dashboardRoutes: RouteObject[] = [
           <DashboardLayout />
         </RealtimeProvider>
       </ProtectedRoute>
+      <RequireAuth>
+        <RealtimeProvider>
+          <DashboardLayout />
+        </RealtimeProvider>
+      </RequireAuth>
     ),
     children: [
       {
@@ -57,6 +70,7 @@ export const dashboardRoutes: RouteObject[] = [
       {
         path: 'orders',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.VIEW_AND_UPDATE_ORDERS,
           <OrdersPage />,
         ),
@@ -64,6 +78,7 @@ export const dashboardRoutes: RouteObject[] = [
       {
         path: 'rooms',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.VIEW_ROOMS,
           <RoomsPage />,
         ),
@@ -72,12 +87,15 @@ export const dashboardRoutes: RouteObject[] = [
         path: 'menu',
         element: wrapWithProtectedRoute(
           Permission.MARK_ITEMS_UNAVAILABLE,
+        element: wrapWithPermissionGuard(
+          Permission.VIEW_MENU,
           <MenuPage />,
         ),
       },
       {
         path: 'payments',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.RECORD_PAYMENTS,
           <PaymentsPage />,
         ),
@@ -85,6 +103,7 @@ export const dashboardRoutes: RouteObject[] = [
       {
         path: 'qr-codes',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.MANAGE_ROOMS_AND_QR_CODES,
           <QrCodesPage />,
         ),
@@ -92,6 +111,7 @@ export const dashboardRoutes: RouteObject[] = [
       {
         path: 'staff',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.MANAGE_STAFF,
           <StaffPage />,
         ),
@@ -99,6 +119,7 @@ export const dashboardRoutes: RouteObject[] = [
       {
         path: 'activity',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.VIEW_ACTIVITY_LOG,
           <ActivityPage />,
         ),
@@ -106,6 +127,7 @@ export const dashboardRoutes: RouteObject[] = [
       {
         path: 'reports',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.VIEW_ACTIVITY_LOG,
           <ReportsPage />,
         ),
@@ -113,6 +135,7 @@ export const dashboardRoutes: RouteObject[] = [
       {
         path: 'escalations',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.VIEW_ACTIVITY_LOG,
           <EscalationsPage />,
         ),
@@ -121,12 +144,15 @@ export const dashboardRoutes: RouteObject[] = [
         path: 'concierge',
         element: wrapWithProtectedRoute(
           Permission.EDIT_MENU,
+        element: wrapWithPermissionGuard(
+          Permission.MANAGE_CONCIERGE_CONTENT,
           <ConciergePage />,
         ),
       },
       {
         path: 'settings',
         element: wrapWithProtectedRoute(
+        element: wrapWithPermissionGuard(
           Permission.MANAGE_HOTEL_SETTINGS,
           <SettingsPage />,
         ),
