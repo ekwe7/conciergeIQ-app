@@ -1,3 +1,4 @@
+import { StaffRole } from '@conciergeiq/contracts';
 import {
   BarChart3,
   BedDouble,
@@ -15,13 +16,13 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth, useCurrentUser } from '../../features/auth/AuthProvider';
 import { useHotel } from '../../features/hotel/useHotel';
 import { useOrders } from '../../features/orders/api';
 import { useOutstanding } from '../../features/payments/api';
 import { initialsOf } from '../../lib/format';
-import { Permission, ROLE_LABEL } from '../../lib/permissions';
+import { Permission, ROLE_LABEL, roleCan } from '../../lib/permissions';
 import { cx } from '../ui/cx';
 
 export interface SidebarProperties {
@@ -31,7 +32,7 @@ export interface SidebarProperties {
   onCloseMobile?: () => void;
 }
 
-interface NavigationItemDescriptor {
+export interface NavigationItemDescriptor {
   to: string;
   label: string;
   icon: LucideIcon;
@@ -61,7 +62,7 @@ function useSafeAuth() {
     return useAuth();
   } catch {
     return {
-      can: () => true,
+      can: (requiredPermission: Permission) => roleCan(StaffRole.ADMIN, requiredPermission),
       signOut: async () => {},
     };
   }
@@ -75,7 +76,7 @@ function useSafeCurrentUser() {
       id: 'staff-placeholder-id',
       fullName: 'Amaka Obi',
       email: 'amaka@azurebay.test',
-      role: 'ADMIN' as const,
+      role: StaffRole.ADMIN,
       hotelId: 'hotel-1',
       isActive: true,
     };
@@ -111,11 +112,12 @@ export function Sidebar({
   onToggleCollapse,
   onCloseMobile,
 }: SidebarProperties) {
-  const { can, signOut } = useSafeAuth();
+  const { signOut } = useSafeAuth();
   const currentUser = useSafeCurrentUser();
   const hotelQuery = useSafeHotel();
   const ordersQuery = useSafeOrders();
-  const outstandingPaymentsQuery = useSafeOutstanding(can(Permission.RECORD_PAYMENTS));
+  const canUserRecordPayments = roleCan(currentUser.role, Permission.RECORD_PAYMENTS);
+  const outstandingPaymentsQuery = useSafeOutstanding(canUserRecordPayments);
 
   const pendingOrdersCount = ordersQuery.data?.filter(
     (orderItem) => orderItem.status === 'PENDING',
@@ -137,9 +139,9 @@ export function Sidebar({
     },
     {
       to: '/menu',
-      label: 'Menu',
+      label: 'Menu management',
       icon: UtensilsCrossed,
-      permission: Permission.VIEW_MENU,
+      permission: Permission.EDIT_MENU,
     },
     {
       to: '/payments',
@@ -185,22 +187,22 @@ export function Sidebar({
       to: '/concierge',
       label: 'Concierge answers',
       icon: MessagesSquare,
-      permission: Permission.MANAGE_CONCIERGE_CONTENT,
+      permission: Permission.EDIT_MENU,
     },
     {
       to: '/settings',
-      label: 'Settings',
+      label: 'Hotel settings',
       icon: Settings,
       permission: Permission.MANAGE_HOTEL_SETTINGS,
     },
   ];
 
   const visibleOperationalItems = operationalNavigationItems.filter(
-    (navigationItem) => can(navigationItem.permission),
+    (navigationItem) => roleCan(currentUser.role, navigationItem.permission),
   );
 
   const visibleAdministrativeItems = administrativeNavigationItems.filter(
-    (navigationItem) => can(navigationItem.permission),
+    (navigationItem) => roleCan(currentUser.role, navigationItem.permission),
   );
 
   const hotelDisplayName = hotelQuery.data?.name ?? 'Azure Bay Hotel';
@@ -365,58 +367,69 @@ function NavigationLinkItem({
   isCollapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const location = useLocation();
+  const dashboardAliasPath = `/dashboard${navigationItem.to}`;
+  const isDashboardAliasActive =
+    location.pathname === dashboardAliasPath ||
+    location.pathname.startsWith(`${dashboardAliasPath}/`);
+
   return (
     <NavLink
       to={navigationItem.to}
       onClick={onNavigate}
-      className={({ isActive }) =>
-        cx(
+      aria-current={isDashboardAliasActive ? 'page' : undefined}
+      className={({ isActive }) => {
+        const isRouteActive = isActive || isDashboardAliasActive;
+        return cx(
           'group relative flex items-center rounded-lg text-[13px] transition-colors',
           isCollapsed
             ? 'h-10 w-10 justify-center mx-auto'
             : 'h-9 px-2.5 py-1.5 gap-3',
-          isActive
+          isRouteActive
             ? 'bg-sunken font-medium text-ink'
             : 'text-ink-2 hover:bg-canvas hover:text-ink',
-        )
-      }
+        );
+      }}
       title={isCollapsed ? navigationItem.label : undefined}
     >
-      {({ isActive }) => (
-        <>
-          <navigationItem.icon
-            className={cx(
-              'h-4 w-4 shrink-0 transition-colors',
-              isActive ? 'text-ink' : 'text-ink-3 group-hover:text-ink',
-            )}
-            strokeWidth={1.75}
-            aria-hidden="true"
-          />
-          <span
-            className={cx(
-              isCollapsed
-                ? 'sr-only'
-                : 'flex-1 truncate',
-            )}
-          >
-            {navigationItem.label}
-          </span>
-          {!isCollapsed && navigationItem.count ? (
-            <span
-              className="tabular text-xs text-ink-3 font-medium"
-              aria-label={`${navigationItem.count} waiting`}
-            >
-              {navigationItem.count}
-            </span>
-          ) : null}
-          {isCollapsed && navigationItem.count ? (
-            <span
-              className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-status-pending"
-              aria-label={`${navigationItem.count} waiting`}
+      {({ isActive }) => {
+        const isRouteActive = isActive || isDashboardAliasActive;
+        return (
+          <>
+            <navigationItem.icon
+              className={cx(
+                'h-4 w-4 shrink-0 transition-colors',
+                isRouteActive ? 'text-ink' : 'text-ink-3 group-hover:text-ink',
+              )}
+              strokeWidth={1.75}
+              aria-hidden="true"
             />
-          ) : null}
-        </>
-      )}
+            <span
+              className={cx(
+                isCollapsed
+                  ? 'sr-only'
+                  : 'flex-1 truncate',
+              )}
+            >
+              {navigationItem.label}
+            </span>
+            {!isCollapsed && navigationItem.count ? (
+              <span
+                className="tabular text-xs text-ink-3 font-medium"
+                aria-label={`${navigationItem.count} waiting`}
+              >
+                {navigationItem.count}
+              </span>
+            ) : null}
+            {isCollapsed && navigationItem.count ? (
+              <span
+                className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-status-pending"
+                aria-label={`${navigationItem.count} waiting`}
+              />
+            ) : null}
+          </>
+        );
+      }}
     </NavLink>
   );
 }

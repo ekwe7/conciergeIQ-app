@@ -5,7 +5,7 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { RequireAuth, RequirePermission } from '../components/layout/Guards';
+import { ProtectedRoute } from '../components/layout/ProtectedRoute';
 import { RealtimeProvider } from '../features/realtime/RealtimeProvider';
 import { Permission } from '../lib/permissions';
 import { ActivityPage } from '../pages/ActivityPage';
@@ -22,13 +22,13 @@ import { RoomsPage } from '../pages/RoomsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { StaffPage } from '../pages/StaffPage';
 
-const wrapWithPermissionGuard = (
+const wrapWithProtectedRoute = (
   requiredPermission: Permission,
   pageElement: JSX.Element,
 ) => (
-  <RequirePermission permission={requiredPermission}>
+  <ProtectedRoute permission={requiredPermission}>
     {pageElement}
-  </RequirePermission>
+  </ProtectedRoute>
 );
 
 export interface ApplicationRouterConfigurationOptions {
@@ -43,11 +43,11 @@ export const dashboardRoutes: RouteObject[] = [
   },
   {
     element: (
-      <RequireAuth>
+      <ProtectedRoute renderAccessBanner={false}>
         <RealtimeProvider>
           <DashboardLayout />
         </RealtimeProvider>
-      </RequireAuth>
+      </ProtectedRoute>
     ),
     children: [
       {
@@ -56,80 +56,166 @@ export const dashboardRoutes: RouteObject[] = [
       },
       {
         path: 'orders',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.VIEW_AND_UPDATE_ORDERS,
           <OrdersPage />,
         ),
       },
       {
         path: 'rooms',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.VIEW_ROOMS,
           <RoomsPage />,
         ),
       },
       {
         path: 'menu',
-        element: wrapWithPermissionGuard(
-          Permission.VIEW_MENU,
+        element: wrapWithProtectedRoute(
+          Permission.MARK_ITEMS_UNAVAILABLE,
           <MenuPage />,
         ),
       },
       {
         path: 'payments',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.RECORD_PAYMENTS,
           <PaymentsPage />,
         ),
       },
       {
         path: 'qr-codes',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.MANAGE_ROOMS_AND_QR_CODES,
           <QrCodesPage />,
         ),
       },
       {
         path: 'staff',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.MANAGE_STAFF,
           <StaffPage />,
         ),
       },
       {
         path: 'activity',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.VIEW_ACTIVITY_LOG,
           <ActivityPage />,
         ),
       },
       {
         path: 'reports',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.VIEW_ACTIVITY_LOG,
           <ReportsPage />,
         ),
       },
       {
         path: 'escalations',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.VIEW_ACTIVITY_LOG,
           <EscalationsPage />,
         ),
       },
       {
         path: 'concierge',
-        element: wrapWithPermissionGuard(
-          Permission.MANAGE_CONCIERGE_CONTENT,
+        element: wrapWithProtectedRoute(
+          Permission.EDIT_MENU,
           <ConciergePage />,
         ),
       },
       {
         path: 'settings',
-        element: wrapWithPermissionGuard(
+        element: wrapWithProtectedRoute(
           Permission.MANAGE_HOTEL_SETTINGS,
           <SettingsPage />,
         ),
+      },
+      {
+        path: 'dashboard',
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/dashboard/orders" replace />,
+          },
+          {
+            path: 'orders',
+            element: wrapWithProtectedRoute(
+              Permission.VIEW_AND_UPDATE_ORDERS,
+              <OrdersPage />,
+            ),
+          },
+          {
+            path: 'rooms',
+            element: wrapWithProtectedRoute(
+              Permission.VIEW_ROOMS,
+              <RoomsPage />,
+            ),
+          },
+          {
+            path: 'menu',
+            element: wrapWithProtectedRoute(
+              Permission.EDIT_MENU,
+              <MenuPage />,
+            ),
+          },
+          {
+            path: 'payments',
+            element: wrapWithProtectedRoute(
+              Permission.RECORD_PAYMENTS,
+              <PaymentsPage />,
+            ),
+          },
+          {
+            path: 'qr-codes',
+            element: wrapWithProtectedRoute(
+              Permission.MANAGE_ROOMS_AND_QR_CODES,
+              <QrCodesPage />,
+            ),
+          },
+          {
+            path: 'staff',
+            element: wrapWithProtectedRoute(
+              Permission.MANAGE_STAFF,
+              <StaffPage />,
+            ),
+          },
+          {
+            path: 'activity',
+            element: wrapWithProtectedRoute(
+              Permission.VIEW_ACTIVITY_LOG,
+              <ActivityPage />,
+            ),
+          },
+          {
+            path: 'reports',
+            element: wrapWithProtectedRoute(
+              Permission.VIEW_ACTIVITY_LOG,
+              <ReportsPage />,
+            ),
+          },
+          {
+            path: 'escalations',
+            element: wrapWithProtectedRoute(
+              Permission.VIEW_ACTIVITY_LOG,
+              <EscalationsPage />,
+            ),
+          },
+          {
+            path: 'concierge',
+            element: wrapWithProtectedRoute(
+              Permission.EDIT_MENU,
+              <ConciergePage />,
+            ),
+          },
+          {
+            path: 'settings',
+            element: wrapWithProtectedRoute(
+              Permission.MANAGE_HOTEL_SETTINGS,
+              <SettingsPage />,
+            ),
+          },
+        ],
       },
       {
         path: '*',
