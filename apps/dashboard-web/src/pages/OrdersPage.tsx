@@ -4,108 +4,112 @@ import { useSearchParams } from 'react-router-dom';
 import { Input } from '../components/ui/Field';
 import { EmptyState, ErrorState, LoadingRows, PageHeader, Panel, table } from '../components/ui/Page';
 import { Segmented } from '../components/ui/Segmented';
-import { ORDER_STATUS_LABEL, OrderStatusLabel } from '../components/ui/Status';
+import { OrderStatusLabel } from '../components/ui/Status';
 import { useToast } from '../components/ui/Toast';
 import { cx } from '../components/ui/cx';
 import { useAuth } from '../features/auth/AuthProvider';
 import { useHotelLocale } from '../features/hotel/useHotel';
-import { averageAcceptMilliseconds, useOrders, useUpdateOrderStatus } from '../features/orders/api';
-import { OrderCard, PaymentTag } from '../features/orders/OrderCard';
+import {
+  ORDER_BOARD_COLUMNS,
+  averageAcceptMilliseconds,
+  groupOrdersByStatus,
+  useHotelOrders,
+  useUpdateOrderStatus,
+} from '../features/orders/api';
 import { CancelOrderDialog, RecordPaymentDialog, type OrderRef } from '../features/orders/OrderDialogs';
 import { OrderDrawer } from '../features/orders/OrderDrawer';
+import { OrderBoardColumn, PaymentTag } from '../features/orders/components';
 import { useRealtime } from '../features/realtime/RealtimeProvider';
-import type { Order, OrderStatus } from '../lib/api-types';
+import type { Order } from '../lib/api-types';
 import { describeError } from '../lib/error-handler';
 import { formatAge, formatCharge, formatDuration, formatOrderNumber, summarizeItems } from '../lib/format';
 import { Permission } from '../lib/permissions';
 import { useNow } from '../lib/use-now';
 
-const COLUMNS: OrderStatus[] = ['PENDING', 'IN_PROGRESS', 'DELIVERED', 'CANCELLED'];
-
-/** Oldest first while work is open, newest first once it is done. */
-function sortForColumn(status: OrderStatus, orders: Order[]): Order[] {
-  const byTime = (order: Order) => new Date(status === 'PENDING' || status === 'IN_PROGRESS' ? order.createdAt : order.updatedAt).getTime();
-  const open = status === 'PENDING' || status === 'IN_PROGRESS';
-  return [...orders].sort((a, b) => (open ? byTime(a) - byTime(b) : byTime(b) - byTime(a)));
-}
-
 export function OrdersPage() {
   const { can } = useAuth();
   const { currency, timeZone } = useHotelLocale();
   const { latestOrder, dismissLatestOrder } = useRealtime();
-  const orders = useOrders();
-  const updateStatus = useUpdateOrderStatus();
+  const hotelOrdersQuery = useHotelOrders();
+  const updateOrderStatusMutation = useUpdateOrderStatus();
   const toast = useToast();
-  const now = useNow(1000);
-  const [params, setParams] = useSearchParams();
-  const [filter, setFilter] = useState('');
-  const [view, setView] = useState<'board' | 'list'>('board');
-  const [cancelling, setCancelling] = useState<OrderRef | null>(null);
-  const [paying, setPaying] = useState<OrderRef | null>(null);
+  const currentTimestampMs = useNow(60_000);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchFilterQuery, setSearchFilterQuery] = useState('');
+  const [layoutViewMode, setLayoutViewMode] = useState<'board' | 'list'>('board');
+  const [cancellingOrderReference, setCancellingOrderReference] = useState<OrderRef | null>(null);
+  const [payingOrderReference, setPayingOrderReference] = useState<OrderRef | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
   const canRecordPayments = can(Permission.RECORD_PAYMENTS);
-  const openOrderId = params.get('order');
+  const selectedOrderId = searchParams.get('order');
 
-  const openOrder = (orderId: string | null) =>
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        if (orderId) next.set('order', orderId);
-        else next.delete('order');
-        return next;
+  const handleSelectOrder = (orderId: string | null) =>
+    setSearchParams(
+      (currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+        if (orderId) nextParams.set('order', orderId);
+        else nextParams.delete('order');
+        return nextParams;
       },
       { replace: !orderId },
     );
 
-  const visible = useMemo(() => {
-    const query = filter.trim().toLowerCase().replace(/^a-/, '');
-    if (!query) return orders.data ?? [];
-    return (orders.data ?? []).filter(
-      (order) => order.roomNumber.toLowerCase().includes(query) || String(order.number).includes(query),
+  const visibleOrders = useMemo(() => {
+    const normalizedQuery = searchFilterQuery.trim().toLowerCase().replace(/^a-/, '');
+    if (!normalizedQuery) return hotelOrdersQuery.orders;
+    return hotelOrdersQuery.orders.filter(
+      (orderRecord) =>
+        orderRecord.roomNumber.toLowerCase().includes(normalizedQuery) ||
+        String(orderRecord.number).includes(normalizedQuery),
     );
-  }, [orders.data, filter]);
+  }, [hotelOrdersQuery.orders, searchFilterQuery]);
 
-  const byStatus = useMemo(() => {
-    const groups = Object.fromEntries(COLUMNS.map((status) => [status, [] as Order[]])) as Record<OrderStatus, Order[]>;
-    visible.forEach((order) => groups[order.status].push(order));
-    COLUMNS.forEach((status) => (groups[status] = sortForColumn(status, groups[status])));
-    return groups;
-  }, [visible]);
+  const groupedOrdersByStatus = useMemo(
+    () => groupOrdersByStatus(visibleOrders),
+    [visibleOrders],
+  );
 
-  const open = (orders.data ?? []).filter((order) => order.status === 'PENDING' || order.status === 'IN_PROGRESS').length;
-  const averageAccept = orders.data ? averageAcceptMilliseconds(orders.data) : null;
+  const openOrdersCount = hotelOrdersQuery.orders.filter(
+    (orderRecord) =>
+      orderRecord.status === 'PENDING' || orderRecord.status === 'IN_PROGRESS',
+  ).length;
+  const averageAcceptTimeMs = hotelOrdersQuery.data
+    ? averageAcceptMilliseconds(hotelOrdersQuery.data)
+    : null;
 
-  const advance = (order: Order, status: 'IN_PROGRESS' | 'DELIVERED') => {
-    setBusyOrderId(order.id);
-    updateStatus.mutate(
-      { orderId: order.id, change: { status } },
+  const advanceOrderStatus = (
+    orderRecord: Order,
+    nextStatus: 'IN_PROGRESS' | 'DELIVERED',
+  ) => {
+    setBusyOrderId(orderRecord.id);
+    updateOrderStatusMutation.mutate(
+      { orderId: orderRecord.id, change: { status: nextStatus } },
       {
-        onSuccess: () => toast.show(`Order ${formatOrderNumber(order.number)} ${status === 'IN_PROGRESS' ? 'accepted' : 'delivered'}`),
-        onError: (caught) => toast.error(describeError(caught)),
+        onSuccess: () =>
+          toast.show(
+            `Order ${formatOrderNumber(orderRecord.number)} ${
+              nextStatus === 'IN_PROGRESS' ? 'accepted' : 'delivered'
+            }`,
+          ),
+        onError: (caughtError) => toast.error(describeError(caughtError)),
         onSettled: () => setBusyOrderId(null),
       },
     );
   };
-
-  const cardHandlers = (order: Order) => ({
-    onOpen: () => openOrder(order.id),
-    onAccept: () => advance(order, 'IN_PROGRESS'),
-    onDeliver: () => advance(order, 'DELIVERED'),
-    onCancel: () => setCancelling(order),
-    onRecordPayment: () => setPaying(order),
-  });
 
   return (
     <>
       <PageHeader
         title="Live orders"
         description={
-          orders.data
+          hotelOrdersQuery.data
             ? [
-                `${open} open`,
-                `${orders.data.length} in the last 24 hours`,
-                averageAccept !== null ? `average time to accept ${formatDuration(averageAccept)}` : null,
+                `${openOrdersCount} open`,
+                `${hotelOrdersQuery.data.length} in the last 24 hours`,
+                averageAcceptTimeMs !== null
+                  ? `average time to accept ${formatDuration(averageAcceptTimeMs)}`
+                  : null,
               ]
                 .filter(Boolean)
                 .join(' · ')
@@ -114,8 +118,8 @@ export function OrdersPage() {
         actions={
           <Segmented
             label="Layout"
-            value={view}
-            onChange={setView}
+            value={layoutViewMode}
+            onChange={setLayoutViewMode}
             options={[
               { value: 'board', label: 'Board' },
               { value: 'list', label: 'List' },
@@ -129,19 +133,28 @@ export function OrdersPage() {
           role="status"
           className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-notice-line bg-notice px-4 py-2.5 text-[13px]"
         >
-          <span className="font-medium text-ink">New order from Room {latestOrder.roomNumber}</span>
-          <span className="min-w-0 flex-1 truncate text-ink-2">{latestOrder.itemsSummary}</span>
+          <span className="font-medium text-ink">
+            New order from Room {latestOrder.roomNumber}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-ink-2">
+            {latestOrder.itemsSummary}
+          </span>
           <button
             type="button"
             className="font-medium text-ink underline underline-offset-2"
             onClick={() => {
-              openOrder(latestOrder.orderId);
+              handleSelectOrder(latestOrder.orderId);
               dismissLatestOrder();
             }}
           >
             View order
           </button>
-          <button type="button" aria-label="Dismiss" onClick={dismissLatestOrder} className="rounded p-0.5 text-ink-3 hover:text-ink">
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={dismissLatestOrder}
+            className="rounded p-0.5 text-ink-3 hover:text-ink"
+          >
             <X className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
         </div>
@@ -150,59 +163,67 @@ export function OrdersPage() {
       <div className="mb-4 max-w-xs">
         <label className="relative block">
           <span className="sr-only">Filter by room or order number</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" strokeWidth={1.75} />
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3"
+            strokeWidth={1.75}
+          />
           <Input
             type="search"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
+            value={searchFilterQuery}
+            onChange={(changeEvent) => setSearchFilterQuery(changeEvent.target.value)}
             placeholder="Room or order number"
             className="pl-9"
           />
         </label>
       </div>
 
-      {orders.isPending && <LoadingRows rows={6} label="Loading orders" />}
-      {orders.error && !orders.data && (
+      {hotelOrdersQuery.isPending && <LoadingRows rows={6} label="Loading orders" />}
+      {hotelOrdersQuery.error && !hotelOrdersQuery.data && (
         <Panel>
-          <ErrorState message={describeError(orders.error)} onRetry={() => void orders.refetch()} />
+          <ErrorState
+            message={describeError(hotelOrdersQuery.error)}
+            onRetry={() => void hotelOrdersQuery.refetch()}
+          />
         </Panel>
       )}
 
-      {orders.data && view === 'board' && (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {COLUMNS.map((status) => (
-            <section key={status} aria-label={ORDER_STATUS_LABEL[status]} className="min-w-0 rounded-lg bg-sunken p-2">
-              <header className="flex items-center justify-between px-1.5 pb-2 pt-1">
-                <OrderStatusLabel status={status} />
-                <span className="tabular text-xs text-ink-3">{byStatus[status].length}</span>
-              </header>
-              <div className="space-y-2">
-                {byStatus[status].map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    now={now}
-                    currency={currency}
-                    canRecordPayments={canRecordPayments}
-                    busy={busyOrderId === order.id}
-                    {...cardHandlers(order)}
-                  />
-                ))}
-                {byStatus[status].length === 0 && (
-                  <p className="px-1.5 py-6 text-center text-xs text-ink-3">
-                    {status === 'PENDING' ? 'Nothing waiting' : 'None'}
-                  </p>
-                )}
-              </div>
-            </section>
+      {hotelOrdersQuery.data && layoutViewMode === 'board' && (
+        <div
+          data-testid="orders-kanban-board"
+          className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4"
+        >
+          {ORDER_BOARD_COLUMNS.map((columnStatus) => (
+            <OrderBoardColumn
+              key={columnStatus}
+              status={columnStatus}
+              orders={groupedOrdersByStatus[columnStatus]}
+              now={currentTimestampMs}
+              currency={currency}
+              canRecordPayments={canRecordPayments}
+              busyOrderId={busyOrderId}
+              selectedOrderId={selectedOrderId}
+              onSelectOrder={(orderId) => handleSelectOrder(orderId)}
+              onAcceptOrder={(orderRecord) =>
+                advanceOrderStatus(orderRecord, 'IN_PROGRESS')
+              }
+              onDeliverOrder={(orderRecord) =>
+                advanceOrderStatus(orderRecord, 'DELIVERED')
+              }
+              onCancelOrder={(orderRecord) => setCancellingOrderReference(orderRecord)}
+              onRecordPayment={(orderRecord) => setPayingOrderReference(orderRecord)}
+            />
           ))}
         </div>
       )}
 
-      {orders.data && view === 'list' && (
+      {hotelOrdersQuery.data && layoutViewMode === 'list' && (
         <Panel>
-          {visible.length === 0 ? (
-            <EmptyState title={filter ? 'No orders match' : 'No orders in the last 24 hours'} />
+          {visibleOrders.length === 0 ? (
+            <EmptyState
+              title={
+                searchFilterQuery ? 'No orders match' : 'No orders in the last 24 hours'
+              }
+            />
           ) : (
             <div className={table.wrap}>
               <table className={table.table}>
@@ -217,25 +238,43 @@ export function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody className={table.body}>
-                  {[...visible]
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .map((order) => (
-                      <tr key={order.id} className={cx(table.row, 'cursor-pointer')} onClick={() => openOrder(order.id)}>
+                  {[...visibleOrders]
+                    .sort(
+                      (firstOrder, secondOrder) =>
+                        new Date(secondOrder.createdAt).getTime() -
+                        new Date(firstOrder.createdAt).getTime(),
+                    )
+                    .map((orderRecord) => (
+                      <tr
+                        key={orderRecord.id}
+                        className={cx(table.row, 'cursor-pointer')}
+                        onClick={() => handleSelectOrder(orderRecord.id)}
+                      >
                         <td className={table.td}>
-                          <button type="button" className="tabular font-medium text-ink hover:underline" onClick={() => openOrder(order.id)}>
-                            {formatOrderNumber(order.number)}
+                          <button
+                            type="button"
+                            className="tabular font-medium text-ink hover:underline"
+                            onClick={() => handleSelectOrder(orderRecord.id)}
+                          >
+                            {formatOrderNumber(orderRecord.number)}
                           </button>
                         </td>
-                        <td className={table.td}>{order.roomNumber}</td>
-                        <td className={cx(table.td, 'max-w-xs truncate')}>{summarizeItems(order.items)}</td>
+                        <td className={table.td}>{orderRecord.roomNumber}</td>
+                        <td className={cx(table.td, 'max-w-xs truncate')}>
+                          {summarizeItems(orderRecord.items)}
+                        </td>
                         <td className={table.td}>
                           <div className="flex items-center gap-2">
-                            <OrderStatusLabel status={order.status} />
-                            <PaymentTag order={order} />
+                            <OrderStatusLabel status={orderRecord.status} />
+                            <PaymentTag order={orderRecord} />
                           </div>
                         </td>
-                        <td className={cx(table.td, 'tabular text-right text-ink')}>{formatCharge(order.totalAmount, currency)}</td>
-                        <td className={cx(table.td, 'tabular text-right')}>{formatAge(order.createdAt, now)}</td>
+                        <td className={cx(table.td, 'tabular text-right text-ink')}>
+                          {formatCharge(orderRecord.totalAmount, currency)}
+                        </td>
+                        <td className={cx(table.td, 'tabular text-right')}>
+                          {formatAge(orderRecord.createdAt, currentTimestampMs)}
+                        </td>
                       </tr>
                     ))}
                 </tbody>
@@ -246,16 +285,23 @@ export function OrdersPage() {
       )}
 
       <OrderDrawer
-        orderId={openOrderId}
+        orderId={selectedOrderId}
         currency={currency}
         timeZone={timeZone}
         canRecordPayments={canRecordPayments}
-        onClose={() => openOrder(null)}
-        onCancel={setCancelling}
-        onRecordPayment={setPaying}
+        onClose={() => handleSelectOrder(null)}
+        onCancel={setCancellingOrderReference}
+        onRecordPayment={setPayingOrderReference}
       />
-      <CancelOrderDialog order={cancelling} onClose={() => setCancelling(null)} />
-      <RecordPaymentDialog order={paying} currency={currency} onClose={() => setPaying(null)} />
+      <CancelOrderDialog
+        order={cancellingOrderReference}
+        onClose={() => setCancellingOrderReference(null)}
+      />
+      <RecordPaymentDialog
+        order={payingOrderReference}
+        currency={currency}
+        onClose={() => setPayingOrderReference(null)}
+      />
     </>
   );
 }
