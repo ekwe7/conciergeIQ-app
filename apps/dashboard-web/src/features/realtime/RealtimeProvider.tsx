@@ -16,7 +16,14 @@ import { config } from '../../lib/config';
 import { formatDuration } from '../../lib/format';
 import { queryKeys } from '../../lib/query-keys';
 import { session } from '../../lib/session';
-import { playNewOrderChime, unlockSound } from '../../lib/sound';
+import {
+  markOrderAsFlashing,
+  playNewOrderChime,
+  readSoundEnabledPreference,
+  subscribeToSoundAlertState,
+  unlockSound,
+  writeSoundEnabledPreference,
+} from '../../lib/sound';
 import {
   StaffSocket,
   updateMenuAvailabilityInQueryCache,
@@ -44,14 +51,9 @@ export interface RealtimeApi {
 }
 
 const RealtimeContext = createContext<RealtimeApi | null>(null);
-const SOUND_PREFERENCE_STORAGE_KEY = 'conciergeiq.dashboard.sound';
 
 function readSoundPreference(): boolean {
-  try {
-    return window.localStorage.getItem(SOUND_PREFERENCE_STORAGE_KEY) !== 'off';
-  } catch {
-    return true;
-  }
+  return readSoundEnabledPreference();
 }
 
 /**
@@ -94,6 +96,7 @@ export function RealtimeProvider({
 
       switch (message.type) {
         case 'NEW_ORDER_RECEIVED':
+          markOrderAsFlashing(message.payload.orderId);
           invalidateQueryKey(queryKeys.orders(hotelId));
           setLatestOrder({
             orderId: message.payload.orderId,
@@ -101,7 +104,11 @@ export function RealtimeProvider({
             roomNumber: message.payload.roomNumber,
             itemsSummary: message.payload.itemsSummary,
           });
-          if (soundOnRef.current) playNewOrderChime();
+          if (soundOnRef.current) {
+            void playNewOrderChime({
+              deduplicateKey: message.payload.orderId || 'staff-incoming-order',
+            });
+          }
           break;
         case 'ORDER_STATUS_CHANGED':
           updateOrderStatusInQueryCache(queryClient, hotelId, {
@@ -192,21 +199,20 @@ export function RealtimeProvider({
     };
   }, [createSocket, handleMessage, hotelId, queryClient]);
 
+  useEffect(() => {
+    return subscribeToSoundAlertState((updatedSnapshot) => {
+      setSoundOnState(updatedSnapshot.isSoundEnabled);
+    });
+  }, []);
+
   const setSoundOn = useCallback((enabled: boolean) => {
-    if (enabled) unlockSound();
+    if (enabled) void unlockSound();
     setSoundOnState(enabled);
-    try {
-      window.localStorage.setItem(
-        SOUND_PREFERENCE_STORAGE_KEY,
-        enabled ? 'on' : 'off',
-      );
-    } catch {
-      // Preference only lasts for this page load.
-    }
+    writeSoundEnabledPreference(enabled);
   }, []);
 
   useEffect(() => {
-    const handleUnlockAudio = () => unlockSound();
+    const handleUnlockAudio = () => void unlockSound();
     window.addEventListener('pointerdown', handleUnlockAudio, { once: true });
     return () => window.removeEventListener('pointerdown', handleUnlockAudio);
   }, []);

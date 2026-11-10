@@ -20,6 +20,7 @@ export interface OrderBoardColumnProperties {
   canRecordPayments?: boolean;
   busyOrderId?: string | null;
   selectedOrderId?: string | null;
+  flashingOrderIds?: ReadonlySet<string>;
   defaultCollapsed?: boolean;
   onSelectOrder?: (orderId: string) => void;
   onAcceptOrder?: (orderRecord: Order) => void;
@@ -42,6 +43,7 @@ export function OrderBoardColumn({
   canRecordPayments = false,
   busyOrderId = null,
   selectedOrderId = null,
+  flashingOrderIds,
   defaultCollapsed = false,
   onSelectOrder,
   onAcceptOrder,
@@ -127,6 +129,7 @@ export function OrderBoardColumn({
               canRecordPayments={canRecordPayments}
               busy={busyOrderId === orderRecord.id}
               isSelected={selectedOrderId === orderRecord.id}
+              isFlashing={flashingOrderIds?.has(orderRecord.id)}
               onSelectOrder={onSelectOrder}
               onAccept={onAcceptOrder ? () => onAcceptOrder(orderRecord) : undefined}
               onDeliver={onDeliverOrder ? () => onDeliverOrder(orderRecord) : undefined}

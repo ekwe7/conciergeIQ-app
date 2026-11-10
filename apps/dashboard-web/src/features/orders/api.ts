@@ -4,6 +4,11 @@ import type { Order, Payment, PaymentMethod } from '../../lib/api-types';
 import { queryKeys } from '../../lib/query-keys';
 import { useCurrentUser } from '../auth/AuthProvider';
 import {
+  useSoundAlert,
+  type UseSoundAlertOptions,
+  type UseSoundAlertResult,
+} from './hooks/useSoundAlert';
+import {
   useStaffWebSocket,
   type UseStaffWebSocketOptions,
   type UseStaffWebSocketResult,
@@ -35,6 +40,7 @@ export {
   sortOrdersForColumn,
   useHotelOrders,
   useOrderDetail,
+  useSoundAlert,
   useStaffWebSocket,
   useUpdateOrderStatus,
   validateOrderStatusUpdate,
@@ -43,6 +49,8 @@ export {
   type StatusChange,
   type UpdateOrderStatusPayload,
   type UpdateOrderStatusVariables,
+  type UseSoundAlertOptions,
+  type UseSoundAlertResult,
   type UseStaffWebSocketOptions,
   type UseStaffWebSocketResult,
 };

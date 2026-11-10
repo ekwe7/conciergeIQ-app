@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth, useCurrentUser } from '../../features/auth/AuthProvider';
 import { useHotel } from '../../features/hotel/useHotel';
+import { useSoundAlert } from '../../features/orders/hooks/useSoundAlert';
 import { useRealtime } from '../../features/realtime/RealtimeProvider';
 import { initialsOf } from '../../lib/format';
 import { ROLE_LABEL } from '../../lib/permissions';
@@ -80,13 +81,21 @@ export function Header({
   const { signOut } = useSafeAuth();
   const currentUser = useSafeCurrentUser();
   const hotelQuery = useSafeHotel();
-  const { connection, soundOn, setSoundOn } = useSafeRealtime();
+  const { connection } = useSafeRealtime();
+  const { soundOn, volume, toggleMute, setVolume } = useSoundAlert();
 
   const isLiveConnection = connection === 'open';
   const hotelDisplayName = hotelQuery.data?.name ?? 'Azure Bay Hotel';
 
   const handleToggleSound = () => {
-    setSoundOn(!soundOn);
+    toggleMute();
+  };
+
+  const handleVolumeSliderChange = (
+    changeEvent: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const nextVolumeLevel = Number.parseFloat(changeEvent.target.value);
+    setVolume(nextVolumeLevel);
   };
 
   const handleSignOut = () => {
@@ -162,23 +171,43 @@ export function Header({
           </span>
         </span>
 
-        {/* Operational Notification Sound Toggle */}
-        <button
-          type="button"
-          onClick={handleToggleSound}
-          aria-pressed={soundOn}
-          aria-label={soundOn ? 'Sound on' : 'Sound off'}
-          title={soundOn ? 'Mute sound alerts' : 'Enable sound alerts'}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-xs font-medium text-ink-2 hover:bg-sunken hover:text-ink transition-colors"
+        {/* Operational Notification Sound Toggle & Hover Volume Control */}
+        <div
+          data-testid="header-sound-control-group"
+          className="group relative inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-1.5 py-0.5 hover:bg-sunken transition-colors"
         >
-          {soundOn ? (
-            <Volume2 className="h-4 w-4" strokeWidth={1.75} />
-          ) : (
-            <VolumeX className="h-4 w-4 text-ink-3" strokeWidth={1.75} />
+          <button
+            type="button"
+            onClick={handleToggleSound}
+            aria-pressed={soundOn}
+            aria-label={soundOn ? 'Sound on' : 'Sound off'}
+            data-testid="header-sound-toggle"
+            title={soundOn ? 'Mute sound alerts' : 'Enable sound alerts'}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:text-ink transition-colors"
+          >
+            {soundOn ? (
+              <Volume2 className="h-4 w-4" strokeWidth={1.75} />
+            ) : (
+              <VolumeX className="h-4 w-4 text-ink-3" strokeWidth={1.75} />
+            )}
+            <span className="sr-only">{soundOn ? 'Sound on' : 'Sound off'}</span>
+          </button>
+
+          {soundOn && (
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={volume}
+              onChange={handleVolumeSliderChange}
+              aria-label="Notification volume"
+              data-testid="header-volume-slider"
+              title={`Notification volume: ${Math.round(volume * 100)}%`}
+              className="hidden group-hover:block group-focus-within:block h-1.5 w-16 cursor-pointer accent-accent mr-1"
+            />
           )}
-          <span className="hidden sm:inline">{soundOn ? 'Sound on' : 'Sound off'}</span>
-          <span className="sr-only sm:hidden">Order chime</span>
-        </button>
+        </div>
 
         {/* Staff Profile Summary & Role Badge */}
         <div
