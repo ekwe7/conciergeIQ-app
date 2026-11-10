@@ -24,6 +24,7 @@ import {
   unlockSound,
   writeSoundEnabledPreference,
 } from '../../lib/sound';
+import { playNewOrderChime, unlockSound } from '../../lib/sound';
 import {
   StaffSocket,
   updateMenuAvailabilityInQueryCache,
@@ -54,6 +55,14 @@ const RealtimeContext = createContext<RealtimeApi | null>(null);
 
 function readSoundPreference(): boolean {
   return readSoundEnabledPreference();
+const SOUND_PREFERENCE_STORAGE_KEY = 'conciergeiq.dashboard.sound';
+
+function readSoundPreference(): boolean {
+  try {
+    return window.localStorage.getItem(SOUND_PREFERENCE_STORAGE_KEY) !== 'off';
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -213,6 +222,21 @@ export function RealtimeProvider({
 
   useEffect(() => {
     const handleUnlockAudio = () => void unlockSound();
+  const setSoundOn = useCallback((enabled: boolean) => {
+    if (enabled) unlockSound();
+    setSoundOnState(enabled);
+    try {
+      window.localStorage.setItem(
+        SOUND_PREFERENCE_STORAGE_KEY,
+        enabled ? 'on' : 'off',
+      );
+    } catch {
+      // Preference only lasts for this page load.
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleUnlockAudio = () => unlockSound();
     window.addEventListener('pointerdown', handleUnlockAudio, { once: true });
     return () => window.removeEventListener('pointerdown', handleUnlockAudio);
   }, []);
