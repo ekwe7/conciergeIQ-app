@@ -12,6 +12,7 @@ import {
   StaffWSMessageSchema,
   CreateOrderRequestSchema,
   UpdateOrderStatusRequestSchema,
+  UpdateOrderStatusSchema,
   GuestServiceRequestCreateSchema,
 } from '../src/index';
 
@@ -120,6 +121,22 @@ describe('Contracts Package - TypeBox Runtime Schemas and Branded Types', () => 
       rejectionReason: undefined,
     };
     expect(Value.Check(UpdateOrderStatusRequestSchema, validStatusUpdateRequest)).toBe(true);
+
+    expect(
+      Value.Check(UpdateOrderStatusSchema, { status: 'IN_PROGRESS' }),
+    ).toBe(true);
+    expect(
+      Value.Check(UpdateOrderStatusSchema, {
+        status: 'CANCELLED',
+        reason: 'Guest changed mind',
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(UpdateOrderStatusSchema, {
+        status: 'CANCELLED',
+        reason: '',
+      }),
+    ).toBe(false);
   });
 
   it('validates Domain Event payloads', () => {

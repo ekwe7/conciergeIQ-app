@@ -242,6 +242,21 @@ export const UpdateOrderStatusRequestSchema = Type.Object({
 });
 export type UpdateOrderStatusRequest = Static<typeof UpdateOrderStatusRequestSchema>;
 
+export const UpdateOrderStatusSchema = Type.Union([
+  Type.Object({
+    status: Type.Union([
+      Type.Literal('IN_PROGRESS'),
+      Type.Literal('DELIVERED'),
+    ]),
+    reason: Type.Optional(Type.String()),
+  }),
+  Type.Object({
+    status: Type.Literal('CANCELLED'),
+    reason: Type.String({ minLength: 1, maxLength: 255 }),
+  }),
+]);
+export type UpdateOrderStatusPayload = Static<typeof UpdateOrderStatusSchema>;
+
 export const VerifyGuestSessionRequestSchema = Type.Object({
   qrToken: Type.String({ minLength: 1 }),
 });
