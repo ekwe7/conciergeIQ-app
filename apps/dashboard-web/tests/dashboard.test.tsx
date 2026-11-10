@@ -106,7 +106,7 @@ describe('live orders', () => {
     expect(within(drawer).getByText('Note: No ice')).toBeTruthy();
     expect(within(drawer).getByText('Placed by guest')).toBeTruthy();
     expect(within(drawer).getByText('Waiting to be accepted')).toBeTruthy();
-    expect(within(drawer).getByRole('button', { name: 'Accept' })).toBeTruthy();
+    expect(within(drawer).getByRole('button', { name: 'Accept Order' })).toBeTruthy();
   });
 
   it('shows a new order pushed over the WebSocket', async () => {

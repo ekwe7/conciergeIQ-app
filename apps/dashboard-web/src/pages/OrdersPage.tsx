@@ -16,9 +16,13 @@ import {
   useHotelOrders,
   useUpdateOrderStatus,
 } from '../features/orders/api';
-import { CancelOrderDialog, RecordPaymentDialog, type OrderRef } from '../features/orders/OrderDialogs';
-import { OrderDrawer } from '../features/orders/OrderDrawer';
-import { OrderBoardColumn, PaymentTag } from '../features/orders/components';
+import { RecordPaymentDialog, type OrderRef } from '../features/orders/OrderDialogs';
+import {
+  CancelOrderModal,
+  OrderBoardColumn,
+  OrderDetailDrawer,
+  PaymentTag,
+} from '../features/orders/components';
 import { useRealtime } from '../features/realtime/RealtimeProvider';
 import type { Order } from '../lib/api-types';
 import { describeError } from '../lib/error-handler';
@@ -284,7 +288,7 @@ export function OrdersPage() {
         </Panel>
       )}
 
-      <OrderDrawer
+      <OrderDetailDrawer
         orderId={selectedOrderId}
         currency={currency}
         timeZone={timeZone}
@@ -293,7 +297,7 @@ export function OrdersPage() {
         onCancel={setCancellingOrderReference}
         onRecordPayment={setPayingOrderReference}
       />
-      <CancelOrderDialog
+      <CancelOrderModal
         order={cancellingOrderReference}
         onClose={() => setCancellingOrderReference(null)}
       />
