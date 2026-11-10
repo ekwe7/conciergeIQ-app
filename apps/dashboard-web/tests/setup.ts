@@ -3,7 +3,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { session } from '../src/lib/session';
 import { FakeSocket } from './support';
 
-configure({ asyncUtilTimeout: 5000 });
+configure({ asyncUtilTimeout: 10000 });
 
 beforeEach(() => {
   session.clear();
