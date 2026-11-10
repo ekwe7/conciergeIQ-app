@@ -4,6 +4,11 @@ import type { Order, Payment, PaymentMethod } from '../../lib/api-types';
 import { queryKeys } from '../../lib/query-keys';
 import { useCurrentUser } from '../auth/AuthProvider';
 import {
+  useStaffWebSocket,
+  type UseStaffWebSocketOptions,
+  type UseStaffWebSocketResult,
+} from './hooks/useStaffWebSocket';
+import {
   HOTEL_ORDERS_POLLING_INTERVAL_MS,
   ORDER_BOARD_COLUMNS,
   groupOrdersByStatus,
@@ -30,6 +35,7 @@ export {
   sortOrdersForColumn,
   useHotelOrders,
   useOrderDetail,
+  useStaffWebSocket,
   useUpdateOrderStatus,
   validateOrderStatusUpdate,
   type OptimisticOrderStatusContext,
@@ -37,6 +43,8 @@ export {
   type StatusChange,
   type UpdateOrderStatusPayload,
   type UpdateOrderStatusVariables,
+  type UseStaffWebSocketOptions,
+  type UseStaffWebSocketResult,
 };
 
 /** Orders from the last 24 hours (the API's default window), with 15-second polling fallback. */
