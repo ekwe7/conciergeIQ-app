@@ -23,9 +23,6 @@ import {
   OrderDetailDrawer,
   PaymentTag,
 } from '../features/orders/components';
-import { CancelOrderDialog, RecordPaymentDialog, type OrderRef } from '../features/orders/OrderDialogs';
-import { OrderDrawer } from '../features/orders/OrderDrawer';
-import { OrderBoardColumn, PaymentTag } from '../features/orders/components';
 import { useRealtime } from '../features/realtime/RealtimeProvider';
 import type { Order } from '../lib/api-types';
 import { describeError } from '../lib/error-handler';
@@ -292,7 +289,6 @@ export function OrdersPage() {
       )}
 
       <OrderDetailDrawer
-      <OrderDrawer
         orderId={selectedOrderId}
         currency={currency}
         timeZone={timeZone}
@@ -302,7 +298,6 @@ export function OrdersPage() {
         onRecordPayment={setPayingOrderReference}
       />
       <CancelOrderModal
-      <CancelOrderDialog
         order={cancellingOrderReference}
         onClose={() => setCancellingOrderReference(null)}
       />
