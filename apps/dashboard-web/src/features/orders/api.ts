@@ -50,6 +50,66 @@ export function useOrder(
   hotelIdOverride?: string,
 ) {
   return useOrderDetail(orderId, hotelIdOverride);
+  groupOrdersByStatus,
+  sortOrdersForColumn,
+  useHotelOrders,
+};
+
+/** Orders from the last 24 hours (the API's default window), with 15-second polling fallback. */
+export function useOrders() {
+  return useHotelOrders();
+}
+
+export function useOrder(orderId: string | null) {
+  const { hotelId } = useCurrentUser();
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.order(hotelId, orderId ?? ''),
+    queryFn: ({ signal }) => api.get<Order>(`/orders/${orderId}`, { signal }),
+    enabled: Boolean(orderId),
+    // Show the board's copy at once while the full record loads.
+    initialData: () =>
+      queryClient
+        .getQueryData<Order[]>(queryKeys.orders(hotelId))
+        ?.find((orderRecord) => orderRecord.id === orderId),
+    initialDataUpdatedAt: () =>
+      queryClient.getQueryState(queryKeys.orders(hotelId))?.dataUpdatedAt,
+  });
+}
+
+/** Puts a fresh order into both the list and its detail cache. */
+function useStoreOrder() {
+  const { hotelId } = useCurrentUser();
+  const queryClient = useQueryClient();
+  return (updatedOrder: Order) => {
+    queryClient.setQueryData<Order[]>(queryKeys.orders(hotelId), (existingOrders) =>
+      existingOrders?.map((existingOrder) =>
+        existingOrder.id === updatedOrder.id ? updatedOrder : existingOrder,
+      ),
+    );
+    queryClient.setQueryData(queryKeys.order(hotelId, updatedOrder.id), updatedOrder);
+  };
+}
+
+export type StatusChange =
+  | { status: Extract<OrderStatus, 'IN_PROGRESS' | 'DELIVERED'> }
+  | { status: 'CANCELLED'; reason: string };
+
+export function useUpdateOrderStatus() {
+  const { hotelId } = useCurrentUser();
+  const queryClient = useQueryClient();
+  const storeOrder = useStoreOrder();
+  return useMutation({
+    mutationFn: ({ orderId, change }: { orderId: string; change: StatusChange }) =>
+      api.patch<Order>(`/orders/${orderId}/status`, change),
+    onSuccess: (updatedOrder) => {
+      storeOrder(updatedOrder);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.payments(hotelId) });
+    },
+    // A conflict means someone else moved the order first: show the latest state.
+    onError: () =>
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders(hotelId) }),
+  });
 }
 
 export function useRecordPayment() {
