@@ -24,6 +24,21 @@ export default {
       borderRadius: { DEFAULT: 'var(--radius)' },
       boxShadow: { overlay: 'var(--shadow-overlay)' },
       fontSize: { '2xs': ['11px', '16px'] },
+      keyframes: {
+        'pulse-border': {
+          '0%, 100%': {
+            borderColor: 'var(--accent)',
+            boxShadow: '0 0 0 0 rgb(35 70 62 / 0.35)',
+          },
+          '50%': {
+            borderColor: 'var(--pending)',
+            boxShadow: '0 0 0 4px rgb(168 116 26 / 0.22)',
+          },
+        },
+      },
+      animation: {
+        'pulse-border': 'pulse-border 1s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

@@ -78,6 +78,7 @@ export function fakeApi(handlers: Record<string, Handler>) {
       return json(404, { error: { code: 'NOT_FOUND', message: `No stub for ${method} ${path}` } });
     }
     const result = handler({ body, url });
+    if (result instanceof Response) return result;
     if (result && typeof result === 'object' && REPLY in result) {
       const { status, body: responseBody } = result as { status: number; body?: unknown };
       return status === 204 ? new Response(null, { status }) : json(status, responseBody);

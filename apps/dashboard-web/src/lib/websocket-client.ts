@@ -10,7 +10,7 @@ import type {
 import { config } from './config';
 import { queryKeys } from './query-keys';
 import { session } from './session';
-import { playNewOrderChime } from './sound';
+import { markOrderAsFlashing, playNewOrderChime } from './sound';
 
 export type StaffWebSocketConnectionState =
   | 'idle'
@@ -849,8 +849,14 @@ export class StaffWebSocketClient {
           });
         }
 
+        if (newOrderPayload.orderId) {
+          markOrderAsFlashing(newOrderPayload.orderId);
+        }
+
         if (this.clientConfiguration.soundEnabled ?? true) {
-          playNewOrderChime();
+          void playNewOrderChime({
+            deduplicateKey: newOrderPayload.orderId || 'staff-incoming-order',
+          });
         }
 
         dispatchBrowserCustomEvent(STAFF_NEW_ORDER_EVENT, newOrderPayload);

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Tag } from '../../../components/ui/Status';
 import { cx } from '../../../components/ui/cx';
@@ -8,6 +9,10 @@ import {
   formatOrderNumber,
   summarizeItems,
 } from '../../../lib/format';
+import {
+  isOrderCurrentlyFlashing,
+  subscribeToSoundAlertState,
+} from '../../../lib/sound';
 import { useNow } from '../../../lib/use-now';
 import { canBePaid } from '../api';
 
@@ -80,6 +85,7 @@ export interface OrderCardProperties {
   canRecordPayments?: boolean;
   busy?: boolean;
   isSelected?: boolean;
+  isFlashing?: boolean;
   onSelectOrder?: (orderId: string) => void;
   onSelect?: (orderId: string) => void;
   onClick?: (orderId: string) => void;
@@ -99,6 +105,7 @@ export function OrderCard({
   canRecordPayments = false,
   busy = false,
   isSelected = false,
+  isFlashing,
   onSelectOrder,
   onSelect,
   onClick,
@@ -110,6 +117,18 @@ export function OrderCard({
 }: OrderCardProperties) {
   const minuteTickTimestamp = useNow(60_000);
   const currentTimestampMs = now ?? minuteTickTimestamp;
+  const [isSubscribedFlashing, setIsSubscribedFlashing] = useState<boolean>(() =>
+    isOrderCurrentlyFlashing(order.id),
+  );
+
+  useEffect(() => {
+    setIsSubscribedFlashing(isOrderCurrentlyFlashing(order.id));
+    return subscribeToSoundAlertState((updatedSnapshot) => {
+      setIsSubscribedFlashing(updatedSnapshot.flashingOrderIds.has(order.id));
+    });
+  }, [order.id]);
+
+  const isCardFlashing = Boolean(isFlashing || isSubscribedFlashing);
 
   const isPendingOrder = order.status === 'PENDING';
   const referenceTimestampIso =
@@ -145,9 +164,11 @@ export function OrderCard({
       aria-label={accessibleCardLabel}
       data-testid={`order-card-${order.id}`}
       data-selected={isSelected ? 'true' : 'false'}
+      data-flashing={isCardFlashing ? 'true' : 'false'}
       data-urgency={elapsedUrgency}
       className={cx(
         'group rounded-md border bg-surface transition-colors',
+        isCardFlashing && 'animate-pulse-border border-accent ring-1 ring-accent',
         isSelected
           ? 'border-ink ring-1 ring-ink'
           : elapsedUrgency === 'red'
