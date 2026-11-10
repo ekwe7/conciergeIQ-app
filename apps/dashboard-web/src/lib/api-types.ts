@@ -8,6 +8,8 @@
  * with an import from it.
  */
 
+import { StaffRole } from '@conciergeiq/contracts';
+
 export const OrderStatus = {
   PENDING: 'PENDING',
   IN_PROGRESS: 'IN_PROGRESS',
@@ -16,14 +18,13 @@ export const OrderStatus = {
 } as const;
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
 
-export const StaffRole = {
-  STAFF: 'STAFF',
-  RECEPTIONIST: 'RECEPTIONIST',
-  MANAGER: 'MANAGER',
-  ADMIN: 'ADMIN',
-} as const;
-export type StaffRole = (typeof StaffRole)[keyof typeof StaffRole];
-export const STAFF_ROLES_IN_ORDER: readonly StaffRole[] = ['STAFF', 'RECEPTIONIST', 'MANAGER', 'ADMIN'];
+export { StaffRole };
+export const STAFF_ROLES_IN_ORDER: readonly StaffRole[] = [
+  StaffRole.STAFF,
+  StaffRole.RECEPTIONIST,
+  StaffRole.MANAGER,
+  StaffRole.ADMIN,
+];
 
 export const PaymentMethod = { CASH: 'CASH', CARD: 'CARD', TRANSFER: 'TRANSFER' } as const;
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];

@@ -66,11 +66,18 @@ export const OrderStatusSchema = Type.Union([
 ]);
 export type OrderStatus = Static<typeof OrderStatusSchema>;
 
+export const StaffRole = {
+  STAFF: 'STAFF',
+  RECEPTIONIST: 'RECEPTIONIST',
+  MANAGER: 'MANAGER',
+  ADMIN: 'ADMIN',
+} as const;
+
 export const StaffRoleSchema = Type.Union([
-  Type.Literal('STAFF'),
-  Type.Literal('RECEPTIONIST'),
-  Type.Literal('MANAGER'),
-  Type.Literal('ADMIN'),
+  Type.Literal(StaffRole.STAFF),
+  Type.Literal(StaffRole.RECEPTIONIST),
+  Type.Literal(StaffRole.MANAGER),
+  Type.Literal(StaffRole.ADMIN),
 ]);
 export type StaffRole = Static<typeof StaffRoleSchema>;
 
