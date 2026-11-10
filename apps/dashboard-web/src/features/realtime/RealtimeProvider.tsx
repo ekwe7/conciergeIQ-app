@@ -1,14 +1,29 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useToast } from '../../components/ui/Toast';
 import { refreshSession } from '../../lib/api-client';
 import type { StaffSocketMessage } from '../../lib/api-types';
 import { config } from '../../lib/config';
+import { formatDuration } from '../../lib/format';
 import { queryKeys } from '../../lib/query-keys';
 import { session } from '../../lib/session';
 import { playNewOrderChime, unlockSound } from '../../lib/sound';
-import { StaffSocket, type ConnectionState } from '../../lib/websocket-client';
-import { useToast } from '../../components/ui/Toast';
-import { formatDuration } from '../../lib/format';
+import {
+  StaffSocket,
+  updateMenuAvailabilityInQueryCache,
+  updateOrderStatusInQueryCache,
+  type ConnectionState,
+  type StaffWebSocketClient,
+} from '../../lib/websocket-client';
 import { useAuth, useCurrentUser } from '../auth/AuthProvider';
 
 export interface NewOrderNotice {
@@ -18,20 +33,22 @@ export interface NewOrderNotice {
   itemsSummary: string;
 }
 
-interface RealtimeApi {
+export interface RealtimeApi {
   connection: ConnectionState;
   soundOn: boolean;
-  setSoundOn(on: boolean): void;
+  setSoundOn(enabled: boolean): void;
   latestOrder: NewOrderNotice | null;
   dismissLatestOrder(): void;
+  webSocketClient: StaffWebSocketClient | null;
+  lastEventId: string | null;
 }
 
 const RealtimeContext = createContext<RealtimeApi | null>(null);
-const SOUND_KEY = 'conciergeiq.dashboard.sound';
+const SOUND_PREFERENCE_STORAGE_KEY = 'conciergeiq.dashboard.sound';
 
 function readSoundPreference(): boolean {
   try {
-    return window.localStorage.getItem(SOUND_KEY) !== 'off';
+    return window.localStorage.getItem(SOUND_PREFERENCE_STORAGE_KEY) !== 'off';
   } catch {
     return true;
   }
@@ -39,17 +56,25 @@ function readSoundPreference(): boolean {
 
 /**
  * Keeps the dashboard in step with the hotel: one WebSocket per signed-in
- * tab, scoped by the server to the user's hotel. Each message invalidates the
- * queries it affects; a reconnect refetches everything.
+ * tab, scoped by the server to the user's hotel. Each message updates and
+ * invalidates the queries it affects; a reconnect refetches everything.
  */
-export function RealtimeProvider({ children, createSocket }: { children: ReactNode; createSocket?: (url: string) => WebSocket }) {
+export function RealtimeProvider({
+  children,
+  createSocket,
+}: {
+  children: ReactNode;
+  createSocket?: (destinationUrl: string) => WebSocket;
+}) {
   const { hotelId } = useCurrentUser();
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
-  const toast = useToast();
+  const toastNotification = useToast();
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [soundOn, setSoundOnState] = useState(readSoundPreference);
   const [latestOrder, setLatestOrder] = useState<NewOrderNotice | null>(null);
+  const [lastEventId, setLastEventId] = useState<string | null>(null);
+  const activeSocketRef = useRef<StaffSocket | null>(null);
 
   const soundOnRef = useRef(soundOn);
   soundOnRef.current = soundOn;
@@ -58,10 +83,18 @@ export function RealtimeProvider({ children, createSocket }: { children: ReactNo
 
   const handleMessage = useCallback(
     (message: StaffSocketMessage) => {
-      const invalidate = (queryKey: readonly unknown[]) => void queryClient.invalidateQueries({ queryKey });
+      const currentLastEventId =
+        activeSocketRef.current?.getClient().getLastEventId() ?? null;
+      if (currentLastEventId) {
+        setLastEventId(currentLastEventId);
+      }
+
+      const invalidateQueryKey = (targetQueryKey: readonly unknown[]) =>
+        void queryClient.invalidateQueries({ queryKey: targetQueryKey });
+
       switch (message.type) {
         case 'NEW_ORDER_RECEIVED':
-          invalidate(queryKeys.orders(hotelId));
+          invalidateQueryKey(queryKeys.orders(hotelId));
           setLatestOrder({
             orderId: message.payload.orderId,
             orderNumber: message.payload.orderNumber,
@@ -71,86 +104,141 @@ export function RealtimeProvider({ children, createSocket }: { children: ReactNo
           if (soundOnRef.current) playNewOrderChime();
           break;
         case 'ORDER_STATUS_CHANGED':
-          invalidate(queryKeys.orders(hotelId));
-          invalidate(queryKeys.payments(hotelId));
-          invalidate(queryKeys.stays(hotelId));
+          updateOrderStatusInQueryCache(queryClient, hotelId, {
+            orderId: message.payload.orderId,
+            orderNumber: message.payload.orderNumber,
+            previousStatus: message.payload.previousStatus,
+            newStatus: message.payload.newStatus,
+            changedBy: message.payload.changedBy,
+            updatedAt: message.payload.updatedAt,
+          });
+          invalidateQueryKey(queryKeys.orders(hotelId));
+          invalidateQueryKey(queryKeys.payments(hotelId));
+          invalidateQueryKey(queryKeys.stays(hotelId));
           break;
         case 'PAYMENT_RECORDED':
-          invalidate(queryKeys.orders(hotelId));
-          invalidate(queryKeys.payments(hotelId));
-          invalidate(queryKeys.stays(hotelId));
+          invalidateQueryKey(queryKeys.orders(hotelId));
+          invalidateQueryKey(queryKeys.payments(hotelId));
+          invalidateQueryKey(queryKeys.stays(hotelId));
           break;
         case 'ITEM_AVAILABILITY_CHANGED':
-          invalidate(queryKeys.menu(hotelId));
+          updateMenuAvailabilityInQueryCache(queryClient, hotelId, {
+            itemId: message.payload.itemId,
+            itemName: message.payload.itemName,
+            isAvailable: message.payload.isAvailable,
+          });
+          invalidateQueryKey(queryKeys.menu(hotelId));
           break;
         case 'ORDER_ESCALATED': {
-          invalidate(queryKeys.escalations(hotelId));
-          const who = message.payload.level === 1 ? 'manager' : 'admin';
-          toast.show(
-            `Room ${message.payload.roomNumber} has waited ${formatDuration(message.payload.waitedSeconds * 1000)}. ` +
-              `${message.payload.recipientName} (${who}) was texted.`,
+          invalidateQueryKey(queryKeys.escalations(hotelId));
+          const recipientRoleLabel =
+            message.payload.level === 1 ? 'manager' : 'admin';
+          toastNotification.show(
+            `Room ${message.payload.roomNumber} has waited ${formatDuration(
+              message.payload.waitedSeconds * 1000,
+            )}. ` +
+              `${message.payload.recipientName} (${recipientRoleLabel}) was texted.`,
           );
           break;
         }
         case 'SESSION_REVOKED':
-          void signOutRef.current('Your account was deactivated. Ask a manager if this is a mistake.');
+          void signOutRef.current(
+            'Your account was deactivated. Ask a manager if this is a mistake.',
+          );
           break;
         case 'STAFF_CONNECTED':
           break;
       }
     },
-    [hotelId, queryClient, toast],
+    [hotelId, queryClient, toastNotification],
   );
 
   useEffect(() => {
-    const socket = new StaffSocket({
+    const staffSocket = new StaffSocket({
       url: config.realtimeUrl,
       createSocket,
-      getAccessToken: async (renew) => {
-        const current = renew ? null : session.getAccessToken();
-        if (current) return current;
-        const tokens = await refreshSession();
-        if (tokens) return tokens.accessToken;
-        // Refresh token still held means the refresh failed on the network, not on auth.
-        if (session.getRefreshToken()) throw new Error('Could not renew the session');
+      getAccessToken: async (shouldRenew) => {
+        const currentAccessToken = shouldRenew
+          ? null
+          : session.getAccessToken();
+        if (currentAccessToken) return currentAccessToken;
+        const refreshedTokens = await refreshSession();
+        if (refreshedTokens) return refreshedTokens.accessToken;
+        if (session.getRefreshToken()) {
+          throw new Error('Could not renew the session');
+        }
         return null;
       },
       onMessage: handleMessage,
       onStateChange: setConnection,
-      onReconnected: () => void queryClient.invalidateQueries({ queryKey: ['hotel', hotelId] }),
+      onReconnected: () =>
+        void queryClient.invalidateQueries({ queryKey: ['hotel', hotelId] }),
       onUnauthorized: () => session.expire(),
     });
-    socket.start();
-    return () => socket.stop();
+    activeSocketRef.current = staffSocket;
+    staffSocket.getClient().updateConfiguration({
+      onSessionRevoked: () => {
+        void signOutRef.current(
+          'Your account was deactivated. Ask a manager if this is a mistake.',
+        );
+      },
+    });
+    staffSocket.start();
+    return () => {
+      staffSocket.stop();
+      if (activeSocketRef.current === staffSocket) {
+        activeSocketRef.current = null;
+      }
+    };
   }, [createSocket, handleMessage, hotelId, queryClient]);
 
-  const setSoundOn = useCallback((on: boolean) => {
-    if (on) unlockSound();
-    setSoundOnState(on);
+  const setSoundOn = useCallback((enabled: boolean) => {
+    if (enabled) unlockSound();
+    setSoundOnState(enabled);
     try {
-      window.localStorage.setItem(SOUND_KEY, on ? 'on' : 'off');
+      window.localStorage.setItem(
+        SOUND_PREFERENCE_STORAGE_KEY,
+        enabled ? 'on' : 'off',
+      );
     } catch {
       // Preference only lasts for this page load.
     }
   }, []);
 
-  // Browsers only allow audio after a user gesture: unlock on the first click.
   useEffect(() => {
-    const unlock = () => unlockSound();
-    window.addEventListener('pointerdown', unlock, { once: true });
-    return () => window.removeEventListener('pointerdown', unlock);
+    const handleUnlockAudio = () => unlockSound();
+    window.addEventListener('pointerdown', handleUnlockAudio, { once: true });
+    return () => window.removeEventListener('pointerdown', handleUnlockAudio);
   }, []);
 
-  const value = useMemo<RealtimeApi>(
-    () => ({ connection, soundOn, setSoundOn, latestOrder, dismissLatestOrder: () => setLatestOrder(null) }),
-    [connection, soundOn, setSoundOn, latestOrder],
+  const contextValue = useMemo<RealtimeApi>(
+    () => ({
+      connection,
+      soundOn,
+      setSoundOn,
+      latestOrder,
+      dismissLatestOrder: () => setLatestOrder(null),
+      webSocketClient: activeSocketRef.current?.getClient() ?? null,
+      lastEventId,
+    }),
+    [connection, soundOn, setSoundOn, latestOrder, lastEventId],
   );
 
-  return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
+  return (
+    <RealtimeContext.Provider value={contextValue}>
+      {children}
+    </RealtimeContext.Provider>
+  );
 }
 
 export function useRealtime(): RealtimeApi {
   const realtime = useContext(RealtimeContext);
-  if (!realtime) throw new Error('useRealtime must be used inside RealtimeProvider');
+  if (!realtime) {
+    throw new Error('useRealtime must be used inside RealtimeProvider');
+  }
   return realtime;
+}
+
+export function useRealtimeOptional(): RealtimeApi | null {
+  return useContext(RealtimeContext);
 }

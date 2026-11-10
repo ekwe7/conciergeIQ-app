@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { useStaffWebSocket } from '../../features/orders/hooks/useStaffWebSocket';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
@@ -14,6 +15,7 @@ function getInitialSidebarCollapsedState(): boolean {
 }
 
 export function DashboardLayout() {
+  useStaffWebSocket();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(
     getInitialSidebarCollapsedState,
   );
