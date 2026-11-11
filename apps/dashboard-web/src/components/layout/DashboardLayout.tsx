@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { AudioAlertManager } from '../../features/orders/components/AudioAlertManager';
 import { useStaffWebSocket } from '../../features/orders/hooks/useStaffWebSocket';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
@@ -117,6 +118,8 @@ export function DashboardLayout() {
           onToggleSidebar={handleToggleSidebar}
           onOpenMobileNavigation={handleOpenMobileNavigation}
         />
+
+        <AudioAlertManager />
 
         <main
           id="main-content"

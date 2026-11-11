@@ -64,6 +64,22 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes pulse-border {
+  0%,
+  100% {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0 rgb(35 70 62 / 0.35);
+  }
+  50% {
+    border-color: var(--pending);
+    box-shadow: 0 0 0 4px rgb(168 116 26 / 0.22);
+  }
+}
+
+.animate-pulse-border {
+  animation: pulse-border 1s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
