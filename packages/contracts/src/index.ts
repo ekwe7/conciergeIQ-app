@@ -224,6 +224,11 @@ export const StayBillSchema = Type.Object({
 });
 export type StayBill = Static<typeof StayBillSchema>;
 
+export const UpdateItemAvailabilitySchema = Type.Object({
+  isAvailable: Type.Boolean(),
+});
+export type UpdateItemAvailabilityInput = Static<typeof UpdateItemAvailabilitySchema>;
+
 export const StaffUserSchema = Type.Object({
   id: Type.String({ minLength: 1 }),
   name: Type.String({ minLength: 1 }),

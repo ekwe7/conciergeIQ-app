@@ -16,6 +16,7 @@ import {
   GuestServiceRequestCreateSchema,
   CheckInSchema,
   StayBillSchema,
+  UpdateItemAvailabilitySchema,
 } from '../src/index';
 
 describe('Contracts Package - TypeBox Runtime Schemas and Branded Types', () => {
@@ -231,5 +232,12 @@ describe('Contracts Package - TypeBox Runtime Schemas and Branded Types', () => 
       ],
     };
     expect(Value.Check(StayBillSchema, validStayBillPayload)).toBe(true);
+  });
+
+  it('validates UpdateItemAvailabilitySchema payloads accurately', () => {
+    expect(Value.Check(UpdateItemAvailabilitySchema, { isAvailable: true })).toBe(true);
+    expect(Value.Check(UpdateItemAvailabilitySchema, { isAvailable: false })).toBe(true);
+    expect(Value.Check(UpdateItemAvailabilitySchema, { isAvailable: 'yes' })).toBe(false);
+    expect(Value.Check(UpdateItemAvailabilitySchema, {})).toBe(false);
   });
 });
