@@ -14,6 +14,8 @@ import {
   UpdateOrderStatusRequestSchema,
   UpdateOrderStatusSchema,
   GuestServiceRequestCreateSchema,
+  CheckInSchema,
+  StayBillSchema,
 } from '../src/index';
 
 describe('Contracts Package - TypeBox Runtime Schemas and Branded Types', () => {
@@ -195,5 +197,39 @@ describe('Contracts Package - TypeBox Runtime Schemas and Branded Types', () => 
       items: [],
     };
     expect(Value.Check(GuestServiceRequestCreateSchema, invalidEmptyItemsServiceRequest)).toBe(false);
+  });
+
+  it('validates CheckInSchema payloads accurately', () => {
+    const validCheckInRequest = {
+      guestName: 'Mrs. Funke Adebayo',
+      guestPhone: '+234 801 234 5678',
+      expectedCheckOutAt: '2026-11-12T12:00:00.000Z',
+    };
+    expect(Value.Check(CheckInSchema, validCheckInRequest)).toBe(true);
+
+    const invalidEmptyGuestName = {
+      guestName: '',
+      expectedCheckOutAt: '2026-11-12T12:00:00.000Z',
+    };
+    expect(Value.Check(CheckInSchema, invalidEmptyGuestName)).toBe(false);
+  });
+
+  it('validates StayBillSchema folio summary payloads accurately', () => {
+    const validStayBillPayload = {
+      stayId: 'stay_102',
+      ordersCount: 6,
+      totalCharged: 64300,
+      totalPaid: 52100,
+      outstanding: 12200,
+      openOrders: [
+        {
+          orderId: 'order_1044',
+          orderNumber: 1044,
+          status: 'IN_PROGRESS',
+          itemsSummary: 'Pepper soup',
+        },
+      ],
+    };
+    expect(Value.Check(StayBillSchema, validStayBillPayload)).toBe(true);
   });
 });

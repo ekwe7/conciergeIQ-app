@@ -21,6 +21,7 @@ import { ReportsPage } from '../pages/ReportsPage';
 import { RoomsPage } from '../pages/RoomsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { StaffPage } from '../pages/StaffPage';
+import { StaysPage } from '../pages/StaysPage';
 
 const wrapWithProtectedRoute = (
   requiredPermission: Permission,
@@ -65,7 +66,14 @@ export const dashboardRoutes: RouteObject[] = [
         path: 'rooms',
         element: wrapWithProtectedRoute(
           Permission.VIEW_ROOMS,
-          <RoomsPage />,
+          <StaysPage />,
+        ),
+      },
+      {
+        path: 'stays',
+        element: wrapWithProtectedRoute(
+          Permission.VIEW_ROOMS,
+          <StaysPage />,
         ),
       },
       {
@@ -149,7 +157,14 @@ export const dashboardRoutes: RouteObject[] = [
             path: 'rooms',
             element: wrapWithProtectedRoute(
               Permission.VIEW_ROOMS,
-              <RoomsPage />,
+              <StaysPage />,
+            ),
+          },
+          {
+            path: 'stays',
+            element: wrapWithProtectedRoute(
+              Permission.VIEW_ROOMS,
+              <StaysPage />,
             ),
           },
           {

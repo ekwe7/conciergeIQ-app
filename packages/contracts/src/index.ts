@@ -199,6 +199,31 @@ export const StaySchema = Type.Object({
 });
 export type Stay = Static<typeof StaySchema>;
 
+export const CheckInSchema = Type.Object({
+  guestName: Type.String({ minLength: 1 }),
+  guestPhone: Type.Optional(Type.String()),
+  expectedCheckOutAt: Type.String({ description: 'ISO 8601 date-time string' }),
+});
+export type CheckInInput = Static<typeof CheckInSchema>;
+
+export const StayBillOpenOrderItemSchema = Type.Object({
+  orderId: Type.String({ minLength: 1 }),
+  orderNumber: Type.Integer(),
+  status: Type.String(),
+  itemsSummary: Type.String(),
+});
+export type StayBillOpenOrderItem = Static<typeof StayBillOpenOrderItemSchema>;
+
+export const StayBillSchema = Type.Object({
+  stayId: Type.String({ minLength: 1 }),
+  ordersCount: Type.Integer(),
+  totalCharged: Type.Number(),
+  totalPaid: Type.Number(),
+  outstanding: Type.Number(),
+  openOrders: Type.Array(StayBillOpenOrderItemSchema),
+});
+export type StayBill = Static<typeof StayBillSchema>;
+
 export const StaffUserSchema = Type.Object({
   id: Type.String({ minLength: 1 }),
   name: Type.String({ minLength: 1 }),
